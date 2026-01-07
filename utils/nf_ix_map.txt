@@ -1,0 +1,402 @@
+43.243.21.76 AKL-IX (Auckland NZ)
+2001:7fa:11:6:0:b5a:0:1 AKL-IX (Auckland NZ)
+43.243.21.77 AKL-IX (Auckland NZ)
+2001:7fa:11:6:0:b5a:0:2 AKL-IX (Auckland NZ)
+80.249.210.250 AMS-IX
+2001:7f8:1::a500:2906:1 AMS-IX
+80.249.211.250 AMS-IX
+2001:7f8:1::a500:2906:2 AMS-IX
+223.31.200.7 AMS-IX Mumbai
+2001:e48:44:100b:0:a500:2906:1 AMS-IX Mumbai
+206.51.46.88 Any2Denver
+2605:6c00:303:303::88 Any2Denver
+206.51.46.98 Any2Denver
+2605:6c00:303:303::98 Any2Denver
+206.72.210.226 Any2West
+2001:504:13::210:226 Any2West
+206.72.210.215 Any2West
+2001:504:13::210:215 Any2West
+192.203.154.54 APE
+2001:7fa:4:c0cb::9a36 APE
+192.203.154.53 APE
+2001:7fa:4:c0cb::9a35 APE
+103.203.158.74 BBIX Hong Kong
+2403:c780:b800:bb00::2906:1 BBIX Hong Kong
+103.203.158.75 BBIX Hong Kong
+2403:c780:b800:bb00::2906:2 BBIX Hong Kong
+218.100.9.60 BBIX Osaka
+2001:de8:c:2::2906:1 BBIX Osaka
+218.100.9.61 BBIX Osaka
+2001:de8:c:2::2906:2 BBIX Osaka
+103.231.152.76 BBIX Singapore
+2001:df5:b800:bb00::2906:3 BBIX Singapore
+103.231.152.77 BBIX Singapore
+2001:df5:b800:bb00::2906:4 BBIX Singapore
+101.203.88.119 BBIX Tokyo
+2001:de8:c::2906:2 BBIX Tokyo
+101.203.88.117 BBIX Tokyo
+2001:de8:c::2906:1 BBIX Tokyo
+193.178.185.80 BCIX
+2001:7f8:19:1::b5a:1 BCIX
+194.53.172.32 BNIX
+2001:7f8:26::a500:2906:2 BNIX
+194.53.172.31 BNIX
+2001:7f8:26::a500:2906:1 BNIX
+206.108.236.32 Boston Internet Exchange
+2001:504:24:1::b5a:1 Boston Internet Exchange
+206.108.236.98 Boston Internet Exchange
+2001:504:24:1::b5a:2 Boston Internet Exchange
+206.41.110.25 ChIX
+2001:504:41:110::25 ChIX
+206.71.12.14 CIX-ATL
+2001:504:40:12::1:14 CIX-ATL
+206.71.12.13 CIX-ATL
+2001:504:40:12::1:13 CIX-ATL
+27.254.19.253 CSL Thai-IX Singapore
+2404:b0:13:b::2906:1 CSL Thai-IX Singapore
+103.27.168.185 DE-CIX Delhi
+2400:d180:67::185 DE-CIX Delhi
+103.27.168.128 DE-CIX Delhi
+2400:d180:67::128 DE-CIX Delhi
+80.81.194.182 DE-CIX Frankfurt
+2001:7f8::b5a:0:1 DE-CIX Frankfurt
+80.81.194.202 DE-CIX Frankfurt
+2001:7f8::b5a:0:2 DE-CIX Frankfurt
+185.1.192.116 DE-CIX Madrid
+2001:7f8:a0::b5a:0:2 DE-CIX Madrid
+185.1.192.26 DE-CIX Madrid
+2001:7f8:a0::b5a:0:1 DE-CIX Madrid
+103.27.170.28 DE-CIX Mumbai
+2401:7500:fff6::28 DE-CIX Mumbai
+103.27.170.185 DE-CIX Mumbai
+2401:7500:fff6::185 DE-CIX Mumbai
+206.82.104.81 DE-CIX New York
+2001:504:36::b5a:0:1 DE-CIX New York
+206.82.104.122 DE-CIX New York
+2001:504:36::b5a:0:2 DE-CIX New York
+206.126.110.127 Digital Realty Atlanta
+2001:504:17:110::127 Digital Realty Atlanta
+206.126.110.113 Digital Realty Atlanta
+2001:504:17:110::113 Digital Realty Atlanta
+206.126.115.225 Digital Realty New York
+2001:504:17:115::225 Digital Realty New York
+103.180.190.27 EdgeIX - Auckland
+2001:df0:680:11::1b EdgeIX - Auckland
+103.180.190.26 EdgeIX - Auckland
+2001:df0:680:11::1a EdgeIX - Auckland
+202.77.88.49 EdgeIX - Sydney
+2001:df0:680:5::31 EdgeIX - Sydney
+202.77.88.50 EdgeIX - Sydney
+2001:df0:680:5::32 EdgeIX - Sydney
+89.46.145.207 EPIX.Warszawa
+2001:678:3ac::587 EPIX.Warszawa
+89.46.145.206 EPIX.Warszawa
+2001:678:3ac::586 EPIX.Warszawa
+185.1.112.34 Equinix Amsterdam
+2001:7f8:83::2906:2 Equinix Amsterdam
+185.1.112.20 Equinix Amsterdam
+2001:7f8:83::2906:1 Equinix Amsterdam
+206.126.238.97 Equinix Ashburn
+2001:504:0:2::2906:2 Equinix Ashburn
+206.126.236.238 Equinix Ashburn
+2001:504:0:2::2906:1 Equinix Ashburn
+208.115.136.200 Equinix Chicago
+2001:504:0:4::2906:2 Equinix Chicago
+208.115.136.156 Equinix Chicago
+2001:504:0:4::2906:1 Equinix Chicago
+206.223.118.156 Equinix Dallas
+2001:504:0:5::2906:1 Equinix Dallas
+206.223.118.157 Equinix Dallas
+2001:504:0:5::2906:2 Equinix Dallas
+185.1.109.3 Equinix Dublin
+2001:7f8:c3::2906:2 Equinix Dublin
+185.1.109.33 Equinix Dublin
+2001:7f8:c3::2906:1 Equinix Dublin
+185.1.102.43 Equinix Frankfurt
+2001:7f8:bd::2906:1 Equinix Frankfurt
+185.1.102.56 Equinix Frankfurt
+2001:7f8:bd::2906:2 Equinix Frankfurt
+36.255.56.105 Equinix Hong Kong
+2001:de8:7::2906:1 Equinix Hong Kong
+36.255.56.111 Equinix Hong Kong
+2001:de8:7::2906:2 Equinix Hong Kong
+185.1.104.56 Equinix London
+2001:7f8:be::2906:2 Equinix London
+185.1.104.55 Equinix London
+2001:7f8:be::2906:1 Equinix London
+206.223.123.50 Equinix Los Angeles
+2001:504:0:3::2906:2 Equinix Los Angeles
+206.223.123.9 Equinix Los Angeles
+2001:504:0:3::2906:1 Equinix Los Angeles
+185.1.22.131 Equinix Madrid
+2001:7f8:c6::2906:2 Equinix Madrid
+185.1.22.130 Equinix Madrid
+2001:7f8:c6::2906:1 Equinix Madrid
+185.1.106.31 Equinix Milan
+2001:7f8:c0::2906:2 Equinix Milan
+185.1.106.28 Equinix Milan
+2001:7f8:c0::2906:1 Equinix Milan
+198.32.118.176 Equinix New York
+2001:504:f::2906:1 Equinix New York
+198.32.118.121 Equinix New York
+2001:504:f::2906:2 Equinix New York
+195.42.145.45 Equinix Paris
+2001:7f8:43::2906:1 Equinix Paris
+195.42.145.229 Equinix Paris
+2001:7f8:43::2906:2 Equinix Paris
+142.215.8.6 Equinix Rio de Janeiro
+2001:504:0:a::2906:2 Equinix Rio de Janeiro
+142.215.8.5 Equinix Rio de Janeiro
+2001:504:0:a::2906:1 Equinix Rio de Janeiro
+206.223.116.133 Equinix San Jose
+2001:504:0:1::2906:2 Equinix San Jose
+206.223.117.100 Equinix San Jose
+2001:504:0:1::2906:3 Equinix San Jose
+64.191.232.22 Equinix São Paulo
+2001:504:0:7::16 Equinix São Paulo
+64.191.232.77 Equinix São Paulo
+2001:504:0:7::4d Equinix São Paulo
+27.111.228.200 Equinix Singapore
+2001:de8:4::2906:1 Equinix Singapore
+27.111.228.210 Equinix Singapore
+2001:de8:4::2906:2 Equinix Singapore
+45.127.172.237 Equinix Sydney
+2001:de8:6::2906:2 Equinix Sydney
+45.127.172.200 Equinix Sydney
+2001:de8:6::2906:1 Equinix Sydney
+203.190.230.111 Equinix Tokyo
+2001:de8:5::2906:2 Equinix Tokyo
+203.190.230.110 Equinix Tokyo
+2001:de8:5::2906:1 Equinix Tokyo
+195.182.218.195 Equinix Warsaw
+2001:7f8:42::a500:2906:1 Equinix Warsaw
+195.182.219.195 Equinix Warsaw
+2001:7f8:42::a500:2906:2 Equinix Warsaw
+194.42.48.106 Equinix Zurich
+2001:7f8:c:8235:194:42:48:106 Equinix Zurich
+194.42.48.97 Equinix Zurich
+2001:7f8:c:8235:194:42:48:97 Equinix Zurich
+193.149.1.69 ESpanix Madrid Lower LAN
+2001:7f8:f::75 ESpanix Madrid Lower LAN
+193.149.1.73 ESpanix Madrid Lower LAN
+2001:7f8:f::76 ESpanix Madrid Lower LAN
+45.120.251.142 Extreme IX Chennai
+2001:df2:1900:3::142 Extreme IX Chennai
+45.120.251.141 Extreme IX Chennai
+2001:df2:1900:3::141 Extreme IX Chennai
+45.120.248.28 Extreme IX Delhi
+2001:df2:1900:1::28 Extreme IX Delhi
+45.120.248.16 Extreme IX Delhi
+2001:df2:1900:1::16 Extreme IX Delhi
+103.77.108.143 Extreme IX Mumbai
+2001:df2:1900:2::143 Extreme IX Mumbai
+103.77.108.144 Extreme IX Mumbai
+2001:df2:1900:2::144 Extreme IX Mumbai
+193.110.224.32 FICIX 2 (Helsinki)
+2001:7f8:7:1::2906:1 FICIX 2 (Helsinki)
+206.41.108.50 FL-IX
+2001:504:40:108::1:50 FL-IX
+206.41.108.10 FL-IX
+2001:504:40:108::1:10 FL-IX
+37.49.236.194 France-IX Paris
+2001:7f8:54::194 France-IX Paris
+37.49.237.50 France-IX Paris
+2001:7f8:54::1:50 France-IX Paris
+123.255.92.47 HKIX
+2001:7fa:0:1::ca28:a22f HKIX
+123.255.92.46 HKIX
+2001:7fa:0:1::ca28:a22e HKIX
+185.6.36.85 INEX LAN1
+2001:7f8:18::85 INEX LAN1
+194.88.240.35 INEX LAN2
+2001:7f8:18:12::35 INEX LAN2
+86.104.125.155 InterLAN-IX
+2001:7f8:64:225::2906:1 InterLAN-IX
+206.53.175.32 IX-Denver
+2001:504:58::32 IX-Denver
+206.53.175.33 IX-Denver
+2001:504:58::33 IX-Denver
+45.68.72.56 IX.br (PTT.br) Fortaleza
+2001:12f8:0:9::56 IX.br (PTT.br) Fortaleza
+45.68.72.55 IX.br (PTT.br) Fortaleza
+2001:12f8:0:9::55 IX.br (PTT.br) Fortaleza
+177.52.38.90 IX.br (PTT.br) Porto Alegre
+2001:12f8:0:6::2906 IX.br (PTT.br) Porto Alegre
+177.52.38.120 IX.br (PTT.br) Porto Alegre
+2001:12f8:0:6::b:2906 IX.br (PTT.br) Porto Alegre
+45.68.80.42 IX.br (PTT.br) Rio de Janeiro
+2001:12f8:0:2::42 IX.br (PTT.br) Rio de Janeiro
+45.68.80.189 IX.br (PTT.br) Rio de Janeiro
+2001:12f8:0:2::189 IX.br (PTT.br) Rio de Janeiro
+187.16.220.83 IX.br (PTT.br) São Paulo
+2001:12f8::220:83 IX.br (PTT.br) São Paulo
+187.16.217.185 IX.br (PTT.br) São Paulo
+2001:12f8::217:185 IX.br (PTT.br) São Paulo
+187.16.223.131 IX.br (PTT.br) São Paulo
+2001:12f8::223:131 IX.br (PTT.br) São Paulo
+187.16.223.20 IX.br (PTT.br) São Paulo
+2001:12f8::223:20 IX.br (PTT.br) São Paulo
+185.1.90.15 IXPlay Global Peers
+185.1.90.91 IXPlay Global Peers
+2001:7f8:b2:0:724:0:2906:0 IXPlay Global Peers
+2001:7f8:b2:0:724:0:2906:1 IXPlay Global Peers
+196.60.96.46 JINX
+2001:43f8:1f0::46 JINX
+196.60.96.100 JINX
+2001:43f8:1f0::100 JINX
+103.246.232.222 JPIX OSAKA
+2001:de8:8:6::2906:2 JPIX OSAKA
+103.246.232.221 JPIX OSAKA
+2001:de8:8:6::2906:1 JPIX OSAKA
+210.171.224.222 JPIX TOKYO
+2001:de8:8::2906:2 JPIX TOKYO
+210.171.224.221 JPIX TOKYO
+2001:de8:8::2906:1 JPIX TOKYO
+210.173.184.41 JPNAP Osaka
+2001:7fa:7:2::2906:1 JPNAP Osaka
+210.173.184.93 JPNAP Osaka
+2001:7fa:7:2::2906:2 JPNAP Osaka
+210.173.176.153 JPNAP Tokyo
+2001:7fa:7:1::2906:1 JPNAP Tokyo
+210.173.176.154 JPNAP Tokyo
+2001:7fa:7:1::2906:2 JPNAP Tokyo
+206.51.7.13 KCIX
+2001:504:1b:1::13 KCIX
+206.51.7.37 KCIX
+2001:504:1b:1::37 KCIX
+196.223.21.119 KIXP - Nairobi
+2001:43f8:60:1::119 KIXP - Nairobi
+196.223.21.120 KIXP - Nairobi
+2001:43f8:60:1::120 KIXP - Nairobi
+195.66.224.251 LINX LON1
+2001:7f8:4::b5a:3 LINX LON1
+195.66.227.7 LINX LON1
+2001:7f8:4::b5a:1 LINX LON1
+195.66.225.16 LINX LON1
+2001:7f8:4::b5a:4 LINX LON1
+195.66.227.146 LINX LON1
+2001:7f8:4::b5a:2 LINX LON1
+5.57.80.229 LONAP
+2001:7f8:17::b5a:1 LONAP
+188.93.170.90 LU-CIX
+2001:7f8:4c::b5a:1 LU-CIX
+188.93.171.90 LU-CIX
+2001:7f8:4c::b5a:2 LU-CIX
+43.243.22.53 MegaIX Auckland
+2001:dea:0:40::35 MegaIX Auckland
+43.243.22.72 MegaIX Auckland
+2001:dea:0:40::48 MegaIX Auckland
+194.9.117.87 MegaIX Berlin
+2001:7f8:8:5:0:b5a:0:2 MegaIX Berlin
+194.9.117.86 MegaIX Berlin
+2001:7f8:8:5:0:b5a:0:1 MegaIX Berlin
+194.146.118.134 MegaIX Dusseldorf
+2001:7f8:8::b5a:0:1 MegaIX Dusseldorf
+194.146.118.135 MegaIX Dusseldorf
+2001:7f8:8::b5a:0:2 MegaIX Dusseldorf
+62.69.146.34 MegaIX Frankfurt
+2001:7f8:8:20:0:b5a:0:1 MegaIX Frankfurt
+62.69.146.35 MegaIX Frankfurt
+2001:7f8:8:20:0:b5a:0:2 MegaIX Frankfurt
+103.26.71.40 MegaIX Melbourne
+2001:dea:0:30::28 MegaIX Melbourne
+103.26.71.65 MegaIX Melbourne
+2001:dea:0:30::41 MegaIX Melbourne
+103.26.68.96 MegaIX Sydney
+2001:dea:0:10::60 MegaIX Sydney
+103.26.68.97 MegaIX Sydney
+2001:dea:0:10::61 MegaIX Sydney
+206.108.255.36 MICE
+2001:504:27::b5a:0:2 MICE
+206.108.255.35 MICE
+2001:504:27::b5a:0:1 MICE
+185.1.114.19 MINAP Milan
+2001:7f8:c5::a500:2906:2 MINAP Milan
+185.1.114.18 MINAP Milan
+2001:7f8:c5::a500:2906:1 MINAP Milan
+217.29.66.186 MIX-IT
+2001:7f8:b:100:1d1:a5d0:2906:186 MIX-IT
+217.29.66.187 MIX-IT
+2001:7f8:b:100:1d1:a5d0:2906:187 MIX-IT
+74.200.144.78 MUS-IX
+2607:f928:144::78 MUS-IX
+74.200.144.79 MUS-IX
+2607:f928:144::79 MUS-IX
+218.100.44.143 MyIX
+2001:de8:10::f5 MyIX
+193.201.28.94 Namex Rome
+2001:7f8:10::b:2906 Namex Rome
+193.201.28.76 Namex Rome
+2001:7f8:10::2906 Namex Rome
+196.60.8.100 NAPAfrica IX Johannesburg
+2001:43f8:6d0::100 NAPAfrica IX Johannesburg
+196.60.8.80 NAPAfrica IX Johannesburg
+2001:43f8:6d0::80 NAPAfrica IX Johannesburg
+194.68.128.43 Netnod Stockholm BLUE -- MTU1500
+2001:7f8:d:fe::43 Netnod Stockholm BLUE -- MTU1500
+194.68.123.43 Netnod Stockholm GREEN -- MTU1500
+2001:7f8:d:ff::43 Netnod Stockholm GREEN -- MTU1500
+103.156.182.36 NIXI Mumbai
+2001:de8:1:1::88 NIXI Mumbai
+103.156.182.38 NIXI Mumbai
+2001:de8:1:1::87 NIXI Mumbai
+218.100.52.113 NSW-IX
+2001:7fa:11:4:0:b5a:0:1 NSW-IX
+218.100.52.114 NSW-IX
+2001:7fa:11:4:0:b5a:0:2 NSW-IX
+198.32.195.66 NWAX
+2620:124:2000::66 NWAX
+198.32.195.56 NWAX
+2620:124:2000::56 NWAX
+198.32.160.189 NYIIX New York
+2001:504:1::a500:2906:2 NYIIX New York
+198.32.160.90 NYIIX New York
+2001:504:1::a500:2906:1 NYIIX New York
+206.80.234.14 PhillyIX
+2001:504:90::14 PhillyIX
+206.80.234.15 PhillyIX
+2001:504:90::15 PhillyIX
+206.83.43.63 QCIX
+2001:504:9b::63 QCIX
+206.83.43.74 QCIX
+2001:504:9b::74 QCIX
+185.1.103.77 RoNIX
+2001:7f8:49::77 RoNIX
+206.197.187.11 SFMIX
+2001:504:30::ba00:2906:1 SFMIX
+103.16.102.86 SGIX
+2001:de8:12:100::86 SGIX
+103.16.102.87 SGIX
+2001:de8:12:100::87 SGIX
+206.81.80.223 SIX Seattle
+2001:504:16::223:0:b5a SIX Seattle
+206.81.80.222 SIX Seattle
+2001:504:16::b5a SIX Seattle
+192.121.80.237 STHIX - Stockholm
+2001:7f8:3e:0:a500:0:2906:1 STHIX - Stockholm
+192.121.80.33 STHIX - Stockholm
+2001:7f8:3e:0:a500:0:2906:2 STHIX - Stockholm
+206.83.12.29 STLIX
+2001:504:98::29 STLIX
+206.83.12.21 STLIX
+2001:504:98::21 STLIX
+91.206.52.85 SwissIX
+2001:7f8:24::55 SwissIX
+212.91.0.208 THINX Warsaw
+2001:7f8:60::2906:1 THINX Warsaw
+212.91.0.210 THINX Warsaw
+2001:7f8:60::2906:2 THINX Warsaw
+194.116.96.96 TOP-IX
+2001:7f8:23:ffff::96 TOP-IX
+194.116.96.90 TOP-IX
+2001:7f8:23:ffff::90 TOP-IX
+206.108.114.10 TPAIX
+2001:504:3c::a TPAIX
+206.108.114.31 TPAIX
+2001:504:3c::31 TPAIX
+195.149.232.183 TPIX PL
+2001:7f8:27::2906:1 TPIX PL
+193.203.0.203 VIX
+2001:7f8:30:0:2:1:0:2906 VIX
+193.203.0.9 VIX
+2001:7f8:30:0:1:1:0:2906 VIX

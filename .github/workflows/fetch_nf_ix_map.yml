@@ -1,0 +1,51 @@
+name: Fetch Netflix IX Map
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fetch_nf_ix_map.yml"
+      - "utils/fetch_nf_ix_map.py"
+  schedule:
+    # 每周一 UTC 00:00 运行 (北京时间周一早 8 点)
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nf-ix-map-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch Netflix IX Map
+        run: python utils/fetch_nf_ix_map.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git status --porcelain utils/nf_ix_map.txt | grep -q .; then
+            git add utils/nf_ix_map.txt
+            git commit -m 'actions: Update Netflix IX map'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          else
+            echo 'No changes to commit'
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
