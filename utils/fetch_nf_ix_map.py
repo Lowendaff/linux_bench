@@ -17,7 +17,9 @@ logging.basicConfig(
 )
 
 import os
+
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nf_ix_map.txt")
+URL = "https://www.peeringdb.com/net/457"
 
 
 def fetch_and_parse():
