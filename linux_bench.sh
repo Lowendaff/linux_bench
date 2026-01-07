@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
+# Copyright (C) 2026  Linux Bench
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 # =========================
 # 系统检查
 # =========================
@@ -157,6 +172,8 @@ NC='\033[0m'
 
 # 测试完成标志
 TEST_COMPLETE=false
+# 后台进度条 PID
+SPINNER_PID=""
 
 # 信号捕捉 - 清理临时文件和依赖
 cleanup() {
@@ -171,6 +188,13 @@ cleanup() {
         apt-get remove -y "${CLEANUP_PKGS[@]}" >/dev/null 2>&1 || true
         apt-get autoremove -y >/dev/null 2>&1 || true
         echo -e "  └─ 清理完成 ${GREEN}✓${NC}"
+    fi
+
+    # 3. 清理后台进度条
+    if [ -n "$SPINNER_PID" ]; then
+        kill "$SPINNER_PID" 2>/dev/null
+        wait "$SPINNER_PID" 2>/dev/null
+        SPINNER_PID=""
     fi
 }
 
@@ -1107,7 +1131,7 @@ run_gb6_test() {
     
     # 启动后台进度指示器
     local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    local spinner_pid=""
+    SPINNER_PID=""
     (
         local i=0
         local start_time=$(date +%s)
@@ -1119,7 +1143,7 @@ run_gb6_test() {
             sleep 0.2
         done
     ) &
-    spinner_pid=$!
+    SPINNER_PID=$!
     
     # 运行 Geekbench 6 测试 (免费版会自动上传结果到 Geekbench Browser)
     local gb6_output=""
@@ -1127,8 +1151,9 @@ run_gb6_test() {
     local gb6_exit_code=$?
     
     # 停止进度指示器
-    kill $spinner_pid 2>/dev/null
-    wait $spinner_pid 2>/dev/null
+    kill $SPINNER_PID 2>/dev/null
+    wait $SPINNER_PID 2>/dev/null
+    SPINNER_PID=""
     
     if [ $gb6_exit_code -ne 0 ]; then
         echo -e "\r  │  └─ Geekbench 6 测试失败 ${RED}✗${NC}              "
@@ -1664,7 +1689,7 @@ run_stream_test() {
         # 启动后台进度指示器
         echo -n "  ├─ 正在执行 ${mode_name} 测试 "
         local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-        local spinner_pid=""
+        SPINNER_PID=""
         (
             local i=0
             local start_time=$(date +%s)
@@ -1676,7 +1701,7 @@ run_stream_test() {
                 sleep 0.2
             done
         ) &
-        spinner_pid=$!
+        SPINNER_PID=$!
         
         # 执行测试 (新版 1-stream 脚本不支持 -R 参数指定区域，需要通过管道输入)
         if command -v script >/dev/null 2>&1; then
@@ -1686,8 +1711,9 @@ run_stream_test() {
         fi
         
         # 停止进度指示器
-        kill $spinner_pid 2>/dev/null
-        wait $spinner_pid 2>/dev/null
+        kill $SPINNER_PID 2>/dev/null
+        wait $SPINNER_PID 2>/dev/null
+        SPINNER_PID=""
         
         if [ -f "$output_file" ] && [ -s "$output_file" ]; then
             echo -e "\r  ├─ ${mode_name} 测试完成 ${GREEN}✓${NC}              "
@@ -1721,7 +1747,7 @@ run_stream_test() {
         # 启动后台进度指示器
         echo -n "  ├─ 正在执行 ${mode_name} 检测 "
         local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-        local spinner_pid=""
+        SPINNER_PID=""
         (
             local i=0
             local start_time=$(date +%s)
@@ -1733,7 +1759,7 @@ run_stream_test() {
                 sleep 0.2
             done
         ) &
-        spinner_pid=$!
+        SPINNER_PID=$!
         
         # 执行流媒体测试
         if command -v script >/dev/null 2>&1; then
@@ -1750,8 +1776,9 @@ run_stream_test() {
         fi
         
         # 停止进度指示器
-        kill $spinner_pid 2>/dev/null
-        wait $spinner_pid 2>/dev/null
+        kill $SPINNER_PID 2>/dev/null
+        wait $SPINNER_PID 2>/dev/null
+        SPINNER_PID=""
         
         # 检查结果
         local success=false
