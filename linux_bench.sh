@@ -329,86 +329,103 @@ ensure_dependencies() {
     done
     [ "$verify_fail" = "true" ] && exit 1
     
-    # 4. Ephemeral Binaries (NextTrace, yt-dlp) - 仅在网络模式需要
+    # 4. Ephemeral Binaries (NextTrace, yt-dlp, Geekbench6, cf-speed)
     # Ensure TMP_DIR exists for all modes (used by fio, logs, etc)
     mkdir -p "$TMP_DIR"
     
+    # 预判需要下载的临时工具
+    local need_nexttrace=false
+    local need_ytdlp=false
+    local need_cfspeed=false
+    local need_gb6=false
+    local ephemeral_tools=""
+    
     if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
-        local ephemeral_tools=""
-        
-        if ! check_cmd nexttrace; then
+        ! check_cmd nexttrace && need_nexttrace=true && ephemeral_tools="$ephemeral_tools nexttrace"
+        ! check_cmd yt-dlp && need_ytdlp=true && ephemeral_tools="$ephemeral_tools yt-dlp"
+    fi
+    if [ "$RUN_SPEEDTEST" = "true" ]; then
+        ! check_cmd cloudflare-speed-cli && need_cfspeed=true && ephemeral_tools="$ephemeral_tools cf-speed"
+    fi
+    if [ "$RUN_CPU" = "true" ]; then
+        need_gb6=true && ephemeral_tools="$ephemeral_tools geekbench6"
+    fi
+    
+    # 输出临时工具列表
+    [ -n "$ephemeral_tools" ] && info "下载临时工具:$ephemeral_tools"
+    
+    # 实际下载 - NextTrace
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
+        if [ "$need_nexttrace" = "true" ]; then
             local arch=$(uname -m)
             local url=""
-            # Note: GitHub repo is Case Sensitive: NTrace-core
             [ "$arch" == "x86_64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_amd64"
             [ "$arch" == "aarch64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_arm64"
             
-            # 使用 -f 避免下载 404 页面
+            echo -n "  ├─ 正在下载 nexttrace..."
             if [ -n "$url" ] && curl -f -L -s -o "$TMP_DIR/nexttrace" "$url" 2>/dev/null; then
                 chmod +x "$TMP_DIR/nexttrace"
                 export NEXTTRACE_BIN="$TMP_DIR/nexttrace"
-                # 设置 NextTrace Token
-                export NEXTTRACE_TOKEN=$(echo "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmxlSEFpT2pFM09UYzVNRE0wTnpjNU1EVXpNek1zSW1sd0lqb2laREE1TURFeE1HWmpPVGMxTVRWbFlUQXlOVFEzWVdaaVlqaGxaRFZoTkdWaVpXRTNaV1F3TmpjNE56UTBPR0U1TldJek5EVmhaR0kwTVRJME4yTXlPU0lzSW5WaElqb2lZVEl6TWpVMU5tUm1NbUl6TkdGa1pqazVNR1ppTkRWbVlqRmhaREJoTmpnM01qbGpaamc0TW1JNU5qYzVNR0UxTUdVNE5qRmxOelpsTUdFeU1qbG1PU0o5LkJ2RVBucEJFTnNjT3FMYlptN0R0R1U5NHVpdnh1X2FNLVZkenJHQk1NUWMK" | base64 -d 2>/dev/null)
-                ephemeral_tools="$ephemeral_tools nexttrace"
+                echo -e " ${GREEN}完成${NC}"
             else
                 export NEXTTRACE_BIN="false"
+                echo -e " ${RED}失败${NC}"
             fi
         else
             export NEXTTRACE_BIN="nexttrace"
-            # 设置 NextTrace Token
-            export NEXTTRACE_TOKEN=$(echo "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmxlSEFpT2pFM09UYzVNRE0wTnpjNU1EVXpNek1zSW1sd0lqb2laREE1TURFeE1HWmpPVGMxTVRWbFlUQXlOVFEzWVdaaVlqaGxaRFZoTkdWaVpXRTNaV1F3TmpjNE56UTBPR0U1TldJek5EVmhaR0kwTVRJME4yTXlPU0lzSW5WaElqb2lZVEl6TWpVMU5tUm1NbUl6TkdGa1pqazVNR1ppTkRWbVlqRmhaREJoTmpnM01qbGpaamc0TW1JNU5qYzVNR0UxTUdVNE5qRmxOelpsTUdFeU1qbG1PU0o5LkJ2RVBucEJFTnNjT3FMYlptN0R0R1U5NHVpdnh1X2FNLVZkenJHQk1NUWMK" | base64 -d 2>/dev/null)
         fi
+        # 设置 NextTrace Token
+        export NEXTTRACE_TOKEN=$(echo "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmxlSEFpT2pFM09UYzVNRE0wTnpjNU1EVXpNek1zSW1sd0lqb2laREE1TURFeE1HWmpPVGMxTVRWbFlUQXlOVFEzWVdaaVlqaGxaRFZoTkdWaVpXRTNaV1F3TmpjNE56UTBPR0U1TldJek5EVmhaR0kwTVRJME4yTXlPU0lzSW5WaElqb2lZVEl6TWpVMU5tUm1NbUl6TkdGa1pqazVNR1ppTkRWbVlqRmhaREJoTmpnM01qbGpaamc0TW1JNU5qYzVNR0UxTUdVNE5qRmxOelpsTUdFeU1qbG1PU0o5LkJ2RVBucEJFTnNjT3FMYlptN0R0R1U5NHVpdnh1X2FNLVZkenJHQk1NUWMK" | base64 -d 2>/dev/null)
         
-        # yt-dlp
-        if ! check_cmd yt-dlp; then
+        # 实际下载 - yt-dlp
+        if [ "$need_ytdlp" = "true" ]; then
+            echo -n "  ├─ 正在下载 yt-dlp..."
             if curl -f -L -s -o "$TMP_DIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" 2>/dev/null; then
                 chmod +x "$TMP_DIR/yt-dlp"
                 export YTDLP_BIN="$TMP_DIR/yt-dlp"
-                ephemeral_tools="$ephemeral_tools yt-dlp"
+                echo -e " ${GREEN}完成${NC}"
             else
                 export YTDLP_BIN="false"
+                echo -e " ${RED}失败${NC}"
             fi
         else
             export YTDLP_BIN="yt-dlp"
         fi
-        
-        # 输出下载提示
-        [ -n "$ephemeral_tools" ] && info "下载临时工具:$ephemeral_tools"
     else
-        # 即使不需要，也设个默认值防报错
         export NEXTTRACE_BIN="false"
         export YTDLP_BIN="false"
     fi
     
-    # 5. Cloudflare Speedtest CLI (独立下载，用于带宽测试)
+    # 实际下载 - Cloudflare Speedtest CLI
     if [ "$RUN_SPEEDTEST" = "true" ]; then
-        if ! check_cmd cloudflare-speed-cli; then
+        if [ "$need_cfspeed" = "true" ]; then
             local arch=$(uname -m)
             local cf_url=""
-            # 使用 GitHub latest 重定向，自动下载最新版本
             [ "$arch" == "x86_64" ] && cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
             [ "$arch" == "aarch64" ] && cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
             
             if [ -n "$cf_url" ]; then
                 local cf_tarball="$TMP_DIR/cloudflare-speed-cli.tar.xz"
+                echo -n "  ├─ 正在下载 cf-speed..."
                 if curl -f -L -s -o "$cf_tarball" "$cf_url" 2>/dev/null; then
-                    # 解压 tar.xz
                     if tar -xJf "$cf_tarball" -C "$TMP_DIR" 2>/dev/null; then
-                        # 查找解压后的二进制文件
                         local cf_bin=$(find "$TMP_DIR" -name "cloudflare-speed-cli" -type f 2>/dev/null | head -n1)
                         if [ -n "$cf_bin" ] && [ -f "$cf_bin" ]; then
                             chmod +x "$cf_bin"
                             export CFSPEED_BIN="$cf_bin"
-                            info "下载临时工具: cloudflare-speed-cli"
+                            echo -e " ${GREEN}完成${NC}"
                         else
                             export CFSPEED_BIN="false"
+                            echo -e " ${RED}失败${NC}"
                         fi
                     else
                         export CFSPEED_BIN="false"
+                        echo -e " ${RED}失败${NC}"
                     fi
                     rm -f "$cf_tarball"
                 else
                     export CFSPEED_BIN="false"
+                    echo -e " ${RED}失败${NC}"
                 fi
             else
                 export CFSPEED_BIN="false"
@@ -420,14 +437,13 @@ ensure_dependencies() {
         export CFSPEED_BIN="false"
     fi
 
-    # 6. Geekbench 6 (CPU 测试时下载)
+    # 实际下载 - Geekbench 6 (有进度提示)
     if [ "$RUN_CPU" = "true" ]; then
         local arch=$(uname -m)
         local gb6_version="6.5.0"
         local gb6_url_primary=""
         local gb6_url_fallback=""
         
-        # 根据架构选择下载链接
         case "$arch" in
             x86_64)
                 gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-Linux.tar.gz"
@@ -448,11 +464,9 @@ ensure_dependencies() {
             echo -n "  ├─ 正在下载 Geekbench 6..."
             
             local download_success=false
-            # 尝试从首选源下载
             if curl -f -L -s -o "$gb6_tarball" "$gb6_url_primary" 2>/dev/null; then
                 download_success=true
             else
-                # 首选源失败，尝试备用源
                 echo -n " (使用官方源重试)..."
                 if curl -f -L -s -o "$gb6_tarball" "$gb6_url_fallback" 2>/dev/null; then
                     download_success=true
@@ -460,14 +474,12 @@ ensure_dependencies() {
             fi
             
             if [ "$download_success" = "true" ]; then
-                # 解压 tar.gz
                 if tar -xzf "$gb6_tarball" -C "$TMP_DIR" 2>/dev/null; then
-                    # 查找解压后的 geekbench6 可执行文件
                     local gb6_bin=$(find "$TMP_DIR" -name "geekbench6" -type f 2>/dev/null | head -n1)
                     if [ -n "$gb6_bin" ] && [ -f "$gb6_bin" ]; then
                         chmod +x "$gb6_bin"
                         export GB6_BIN="$gb6_bin"
-                        echo -e " ${GREEN}完成${NC} (v${gb6_version})"
+                        echo -e " ${GREEN}完成${NC}"
                     else
                         echo -e " ${RED}失败${NC}"
                         warn "  │  └─ 未找到 geekbench6 可执行文件"
