@@ -2664,14 +2664,14 @@ EOF
     # 提示用户可选参数
     echo -e "==> 欢迎使用 Lowendaff LinuxBench，这是一个综合的测试工具"
     echo -e "\n--- 可选测试模式："
-    echo -e "  -n, --network       综合网络测试"
-    echo -e "  -h, --hardware      硬件性能测试"
-    echo -e "  -t, --nexttrace     路由追踪"
-    echo -e "  -p, --public        公共服务 (DNS + 流媒体 CDN)"
-    echo -e "  -i, --ip-quality    IPv4 质量检测"
-    echo -e "  -s, --service       服务解锁"
-    echo -e "  -4                  仅进行 IPv4 测试"
-    echo -e "  -6                  仅进行 IPv6 测试\n"
+    echo -e "  -n, --network       综合网络测试 (包含: 基础网络信息、BGP透视、IP质量检测、服务解锁、Speedtest测速)"
+    echo -e "  -h, --hardware      硬件性能测试 (包含: CPU Benchmark、内存、磁盘IO)"
+    echo -e "  -t, --nexttrace     路由追踪 (包含: 回程路由追踪、公共服务/CDN节点追踪)"
+    echo -e "  -p, --public        公共服务 (包含: 仅对 Google/Cloudflare DNS 等公共节点进行路由追踪)"
+    echo -e "  -i, --ip-quality    IP 质量检测 (包含: IP欺诈值、风险评分、流媒体解锁详情)"
+    echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及区域限制解锁检测)"
+    echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
+    echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
     
     # 致谢
     echo -e "[*] 感谢 JamChoi 提供的 Python 源码"
@@ -2692,19 +2692,20 @@ EOF
     log "输出文件: $REPORT_FILE"
     
     # Mode Log
-    # Mode Log
     if [ "$RUN_PUBLIC" = "true" ]; then 
         log "${CYAN}模式: 仅公共服务测试 (-p)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "false" ] && [ "$RUN_TRACE" = "false" ] && [ "$RUN_NET_INFO" = "false" ]; then 
-        log "${CYAN}模式: 仅硬件测试 (-h)${NC}"
-    elif [ "$RUN_CPU" = "false" ] && [ "$RUN_DISK" = "false" ] && [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "true" ]; then 
-        log "${CYAN}模式: 仅网络测试 (-n)${NC}"
+    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ]; then 
+        log "${CYAN}模式: 综合网络测试 (-n)${NC}"
+    elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
+        log "${CYAN}模式: 硬件性能测试 (-h)${NC}"
     elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
-        log "${CYAN}模式: 仅路由追踪 (-t)${NC}"
-    elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_TRACE" = "false" ]; then 
-        log "${CYAN}模式: 仅 IP 质量检测 (-i)${NC}"
-    elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_TRACE" = "false" ]; then 
-        log "${CYAN}模式: 仅服务解锁测试 (-s)${NC}"
+        log "${CYAN}模式: 路由追踪测试 (-t)${NC}"
+    elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_STREAM" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
+        log "${CYAN}模式: IP 质量检测 (-i)${NC}"
+    elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_IP_QUALITY" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
+        log "${CYAN}模式: 服务解锁测试 (-s)${NC}"
+    else
+        log "${CYAN}模式: 默认全能模式 (无参数)${NC}"
     fi
 
     if [ "$SKIP_V6" = "true" ]; then
