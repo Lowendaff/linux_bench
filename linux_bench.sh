@@ -399,16 +399,19 @@ ensure_dependencies() {
     # 6. Geekbench 6 (CPU 测试时下载)
     if [ "$RUN_CPU" = "true" ]; then
         local arch=$(uname -m)
-        local gb6_url=""
         local gb6_version="6.5.0"
+        local gb6_url_primary=""
+        local gb6_url_fallback=""
         
         # 根据架构选择下载链接
         case "$arch" in
             x86_64)
-                gb6_url="https://cdn.geekbench.com/Geekbench-${gb6_version}-Linux.tar.gz"
+                gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-Linux.tar.gz"
+                gb6_url_fallback="https://cdn.geekbench.com/Geekbench-${gb6_version}-Linux.tar.gz"
                 ;;
             aarch64)
-                gb6_url="https://cdn.geekbench.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
+                gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
+                gb6_url_fallback="https://cdn.geekbench.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
                 ;;
             *)
                 warn "  └─ 不支持的架构: $arch，跳过 Geekbench 6"
@@ -416,10 +419,23 @@ ensure_dependencies() {
                 ;;
         esac
         
-        if [ -n "$gb6_url" ]; then
+        if [ -n "$gb6_url_primary" ]; then
             local gb6_tarball="$TMP_DIR/geekbench6.tar.gz"
             echo -n "  ├─ 正在下载 Geekbench 6..."
-            if curl -f -L -s -o "$gb6_tarball" "$gb6_url" 2>/dev/null; then
+            
+            local download_success=false
+            # 尝试从首选源下载
+            if curl -f -L -s -o "$gb6_tarball" "$gb6_url_primary" 2>/dev/null; then
+                download_success=true
+            else
+                # 首选源失败，尝试备用源
+                echo -n " (使用官方源重试)..."
+                if curl -f -L -s -o "$gb6_tarball" "$gb6_url_fallback" 2>/dev/null; then
+                    download_success=true
+                fi
+            fi
+            
+            if [ "$download_success" = "true" ]; then
                 # 解压 tar.gz
                 if tar -xzf "$gb6_tarball" -C "$TMP_DIR" 2>/dev/null; then
                     # 查找解压后的 geekbench6 可执行文件
