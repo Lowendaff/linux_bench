@@ -2669,7 +2669,7 @@ EOF
     echo -e "  -t, --nexttrace     路由追踪 (包含: 回程路由追踪、公共服务/CDN节点追踪)"
     echo -e "  -p, --public        公共服务 (包含: 仅对 Google/Cloudflare DNS 等公共节点进行路由追踪)"
     echo -e "  -i, --ip-quality    IP 质量检测 (包含: IP欺诈值、风险评分、流媒体解锁详情)"
-    echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及区域限制解锁检测)"
+    echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测)"
     echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
     echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
     
@@ -2680,7 +2680,7 @@ EOF
     echo -e "[>] 本项目依赖 kavehtehrani/cloudflare-speed-cli 进行网络测速"
     echo -e "[>] 本项目依赖 1-stream/RegionRestrictionCheck 进行服务解锁测试"
     echo -e "[>] 本项目依赖 nxtrace/NTrace-core 进行路由追踪"
-    echo -e "[i] IP 信息来源于 ipapi.co，ipapi.is 和 ippure.com"
+    echo -e "[i] IP 信息来源于 ipapi.co，ipapi.is，ippure.com 和 PeeringDB"
     echo -e "[✓] 测试结束时自动清理，干干净净（我有洁癖）"
     echo -e "[*] 访问我们的网站 https://lowendaff.com"
     echo -e "[*] 关注我们的 Telegram 频道 https://t.me/lowendaff_blog"
