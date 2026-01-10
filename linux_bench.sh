@@ -256,6 +256,41 @@ check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# 通用重试下载函数
+# 参数: $1=输出文件, $2=URL, $3=描述名称(可选), $4=额外curl参数(可选)
+# 重试策略: 3次重试，间隔分别为5秒、10秒、30秒
+retry_download() {
+    local output_file="$1"
+    local url="$2"
+    local name="${3:-文件}"
+    local extra_args="$4"
+    
+    local retry_delays=(5 10 30)
+    local max_retries=3
+    local attempt=0
+    
+    while [ $attempt -le $max_retries ]; do
+        if [ $attempt -eq 0 ]; then
+            # 第一次尝试
+            if curl -f -L -s $extra_args -o "$output_file" "$url" 2>/dev/null; then
+                return 0
+            fi
+        else
+            # 重试
+            local delay=${retry_delays[$((attempt-1))]}
+            echo -e " ${YELLOW}重试 ($attempt/$max_retries, ${delay}秒后)${NC}"
+            sleep $delay
+            echo -n "  │  ├─ 重试下载 $name..."
+            if curl -f -L -s $extra_args -o "$output_file" "$url" 2>/dev/null; then
+                return 0
+            fi
+        fi
+        attempt=$((attempt + 1))
+    done
+    
+    return 1
+}
+
 # =========================
 # 依赖管理
 # =========================
@@ -363,7 +398,7 @@ ensure_dependencies() {
             [ "$arch" == "aarch64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_arm64"
             
             echo -n "  ├─ 正在下载 nexttrace..."
-            if [ -n "$url" ] && curl -f -L -s -o "$TMP_DIR/nexttrace" "$url" 2>/dev/null; then
+            if [ -n "$url" ] && retry_download "$TMP_DIR/nexttrace" "$url" "nexttrace"; then
                 chmod +x "$TMP_DIR/nexttrace"
                 export NEXTTRACE_BIN="$TMP_DIR/nexttrace"
                 echo -e " ${GREEN}完成${NC}"
@@ -380,7 +415,7 @@ ensure_dependencies() {
         # 实际下载 - yt-dlp
         if [ "$need_ytdlp" = "true" ]; then
             echo -n "  ├─ 正在下载 yt-dlp..."
-            if curl -f -L -s -o "$TMP_DIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" 2>/dev/null; then
+            if retry_download "$TMP_DIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" "yt-dlp"; then
                 chmod +x "$TMP_DIR/yt-dlp"
                 export YTDLP_BIN="$TMP_DIR/yt-dlp"
                 echo -e " ${GREEN}完成${NC}"
@@ -407,7 +442,7 @@ ensure_dependencies() {
             if [ -n "$cf_url" ]; then
                 local cf_tarball="$TMP_DIR/cloudflare-speed-cli.tar.xz"
                 echo -n "  ├─ 正在下载 cf-speed..."
-                if curl -f -L -s -o "$cf_tarball" "$cf_url" 2>/dev/null; then
+                if retry_download "$cf_tarball" "$cf_url" "cf-speed"; then
                     if tar -xJf "$cf_tarball" -C "$TMP_DIR" 2>/dev/null; then
                         local cf_bin=$(find "$TMP_DIR" -name "cloudflare-speed-cli" -type f 2>/dev/null | head -n1)
                         if [ -n "$cf_bin" ] && [ -f "$cf_bin" ]; then
@@ -464,11 +499,13 @@ ensure_dependencies() {
             echo -n "  ├─ 正在下载 Geekbench 6..."
             
             local download_success=false
-            if curl -f -L -s -o "$gb6_tarball" "$gb6_url_primary" 2>/dev/null; then
+            # 先尝试主源（带重试）
+            if retry_download "$gb6_tarball" "$gb6_url_primary" "Geekbench 6"; then
                 download_success=true
             else
-                echo -n " (使用官方源重试)..."
-                if curl -f -L -s -o "$gb6_tarball" "$gb6_url_fallback" 2>/dev/null; then
+                # 主源失败，尝试官方备用源（带重试）
+                echo -n " (使用官方源)..."
+                if retry_download "$gb6_tarball" "$gb6_url_fallback" "Geekbench 6 (官方)"; then
                     download_success=true
                 fi
             fi
@@ -1682,7 +1719,7 @@ run_stream_test() {
     # 下载脚本到临时文件
     echo -n "  ├─ 正在下载测试脚本..."
     local stream_script_file="$TMP_DIR/check_stream.sh"
-    if ! curl -L -s "$stream_script_url" -o "$stream_script_file" 2>/dev/null; then
+    if ! retry_download "$stream_script_file" "$stream_script_url" "测试脚本"; then
         echo -e " ${RED}失败${NC}"
         warn "  └─ 服务解锁测试失败：无法下载测试脚本"
         return
@@ -2020,11 +2057,11 @@ ${stream_output_v6}"
 # =========================
 create_ix_map() {
     local map_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/nf_ix_map.txt"
-    # 直接下载并覆盖，不进行额外检查
-    curl -sL --connect-timeout 5 --max-time 10 "$map_url" -o "$TMP_DIR/ix_ip_map.txt" || {
+    # 直接下载并覆盖，带重试机制
+    if ! retry_download "$TMP_DIR/ix_ip_map.txt" "$map_url" "IX Map" "--connect-timeout 5 --max-time 10"; then
         warn "  Failed to download Netflix IX map. Using empty map."
         echo "" > "$TMP_DIR/ix_ip_map.txt"
-    }
+    fi
 }
 
 # 运营商名称规范化函数
