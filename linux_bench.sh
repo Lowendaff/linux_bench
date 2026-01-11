@@ -170,13 +170,17 @@ CYAN='\033[0;36m'
 SKYBLUE='\033[0;36m'
 NC='\033[0m'
 
-# 测试完成标志
-TEST_COMPLETE=false
 # 后台进度条 PID
 SPINNER_PID=""
 
 # 信号捕捉 - 清理临时文件和依赖
 cleanup() {
+    # 0. 先清理临时 swap（必须在删除 TMP_DIR 之前执行）
+    local swap_file="$TMP_DIR/gb6_swapfile"
+    if [ -f "$swap_file" ]; then
+        swapoff "$swap_file" 2>/dev/null || true
+    fi
+    
     # 1. 删除临时文件
     rm -rf "$TMP_DIR" 2>/dev/null || true
     
@@ -1303,6 +1307,14 @@ run_gb6_test() {
         echo ""
     } >> "$REPORT_FILE"
     
+    # 清理临时 swap
+    if [ -n "$gb6_tmp_swap" ] && [ -f "$gb6_tmp_swap" ]; then
+        echo "  ├─ 清理临时 swap..."
+        swapoff "$gb6_tmp_swap" 2>/dev/null || true
+        rm -f "$gb6_tmp_swap" 2>/dev/null || true
+        echo "  │  └─ 临时 swap 已清理 ✓"
+    fi
+    
     info "  └─ Geekbench 6 测试完成"
 }
 
@@ -2349,7 +2361,7 @@ Level 3 / Lumen AS3356 - 美国纽约|t1.3356.us.nyc.jam114514.me|
 PCCW Global AS3491 - 德国法兰克福|t1.3491.de.fra.jam114514.me|t1.3491.de.fra.ipv6.jam114514.me
 PCCW Global AS3491 - 新加坡|t1.3491.sg.sin.jam114514.me|t1.3491.sg.sin.ipv6.jam114514.me
 PCCW Global AS3491 - 美国纽约|t1.3491.us.nyc.jam114514.me|t1.3491.us.nyc.ipv6.jam114514.me
-PCCW Global AS3491 - 美国圣何塞|t1.3491.us.sjc.jam114514.me|
+PCCW Global AS3491 - 美国洛杉矶|t1.3491.us.lax.jam114514.me|
 Orange AS5511 - 德国法兰克福|t1.5511.de.fra.jam114514.me|t1.5511.de.fra.ipv6.jam114514.me
 Orange AS5511 - 新加坡|t1.5511.sg.sin.jam114514.me|t1.5511.sg.sin.ipv6.jam114514.me
 Orange AS5511 - 美国洛杉矶|t1.5511.us.lax.jam114514.me|t1.5511.us.lax.ipv6.jam114514.me
