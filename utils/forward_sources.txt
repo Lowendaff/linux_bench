@@ -1,0 +1,30 @@
+# 去程路由追踪源列表 (Forward Trace Sources)
+# 格式: 显示名称|--from参数
+# 每行一个源，#开头的行为注释或分组标记
+# #GROUP:分组名 用于在报告中分组显示
+
+#GROUP:中国三大运营商
+中国电信 163|CN+AS4134
+中国电信 CN2|CN+AS4809
+中国联通 169|CN+AS4837
+中国联通 A网|CN+AS9929
+中国移动 CMNET|CN+AS9808
+中国移动 CMIN2|CN+AS58807
+
+#GROUP:亚太地区
+香港 PCCW|HK+AS3491
+香港 HGC|HK+AS9304
+日本 NTT|JP+AS2914
+日本 KDDI|JP+AS2516
+新加坡 Singtel|SG+AS7473
+韩国 KT|KR+AS4766
+
+#GROUP:欧洲
+德国 DTAG|DE+AS3320
+英国 BT|GB+AS5400
+法国 Orange|FR+AS5511
+
+#GROUP:北美
+美国 Cogent|US+AS174
+美国 Lumen|US+AS3356
+美国 GTT|US+AS3257
