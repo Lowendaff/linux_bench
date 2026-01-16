@@ -471,14 +471,41 @@ ensure_dependencies() {
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         if [ "$need_cfspeed" = "true" ]; then
             local arch=$(uname -m)
-            local cf_url=""
-            [ "$arch" == "x86_64" ] && cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
-            [ "$arch" == "aarch64" ] && cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
+            local cf_url_primary=""
+            local cf_url_fallback=""
             
-            if [ -n "$cf_url" ]; then
+            case "$arch" in
+                x86_64)
+                    cf_url_primary="https://file.lowendaff.com/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
+                    cf_url_fallback="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
+                    ;;
+                aarch64)
+                    cf_url_primary="https://file.lowendaff.com/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
+                    cf_url_fallback="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
+                    ;;
+                *)
+                    warn "  └─ 不支持的架构: $arch，跳过 cf-speed"
+                    export CFSPEED_BIN="false"
+                    ;;
+            esac
+            
+            if [ -n "$cf_url_primary" ]; then
                 local cf_tarball="$TMP_DIR/cloudflare-speed-cli.tar.xz"
                 echo -n "  ├─ 正在下载 cf-speed..."
-                if retry_download "$cf_tarball" "$cf_url" "cf-speed"; then
+                
+                local download_success=false
+                # 先尝试主源（带重试）
+                if retry_download "$cf_tarball" "$cf_url_primary" "cf-speed"; then
+                    download_success=true
+                else
+                    # 主源失败，尝试 GitHub 备用源（带重试）
+                    echo -n " (使用 GitHub)..."
+                    if retry_download "$cf_tarball" "$cf_url_fallback" "cf-speed (GitHub)"; then
+                        download_success=true
+                    fi
+                fi
+                
+                if [ "$download_success" = "true" ]; then
                     if tar -xJf "$cf_tarball" -C "$TMP_DIR" 2>/dev/null; then
                         local cf_bin=$(find "$TMP_DIR" -name "cloudflare-speed-cli" -type f 2>/dev/null | head -n1)
                         if [ -n "$cf_bin" ] && [ -f "$cf_bin" ]; then
@@ -498,8 +525,6 @@ ensure_dependencies() {
                     export CFSPEED_BIN="false"
                     echo -e " ${RED}失败${NC}"
                 fi
-            else
-                export CFSPEED_BIN="false"
             fi
         else
             export CFSPEED_BIN="cloudflare-speed-cli"
@@ -2861,7 +2886,7 @@ FALLBACK_EOF
             
             # 写入报告
             {
-                echo "### $name"
+                echo "#### $name"
                 echo ""
                 echo "源: \`--from $from_param\`"
                 echo ""
