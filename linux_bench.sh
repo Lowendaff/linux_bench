@@ -61,6 +61,7 @@ RUN_DISK=true
 RUN_SPEEDTEST=true
 RUN_PUBLIC=false
 RUN_TRACE=true
+RUN_FORWARD_TRACE=false
 SKIP_V4=false
 SKIP_V6=false
 
@@ -146,6 +147,20 @@ for arg in "$@"; do
             RUN_PUBLIC=true
             RUN_TRACE=false
             REPORT_PREFIX="public"
+            shift
+            ;;
+        --forward|-f)
+            RUN_NET_INFO=true
+            RUN_BGP=false
+            RUN_IP_QUALITY=false
+            RUN_STREAM=false
+            RUN_CPU=false
+            RUN_DISK=false
+            RUN_SPEEDTEST=false
+            RUN_PUBLIC=false
+            RUN_TRACE=false
+            RUN_FORWARD_TRACE=true
+            REPORT_PREFIX="forward"
             shift
             ;;
         -4)
@@ -379,8 +394,11 @@ ensure_dependencies() {
     local need_gb6=false
     local ephemeral_tools=""
     
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         ! check_cmd nexttrace && need_nexttrace=true && ephemeral_tools="$ephemeral_tools nexttrace"
+    fi
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
+        # yt-dlp 仅用于回程追踪（获取 YouTube CDN 节点）
         ! check_cmd yt-dlp && need_ytdlp=true && ephemeral_tools="$ephemeral_tools yt-dlp"
     fi
     if [ "$RUN_SPEEDTEST" = "true" ]; then
@@ -393,8 +411,8 @@ ensure_dependencies() {
     # 输出临时工具列表
     [ -n "$ephemeral_tools" ] && info "下载临时工具:$ephemeral_tools"
     
-    # 实际下载 - NextTrace
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
+    # 实际下载 - NextTrace (回程/公共服务/去程追踪都需要)
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         if [ "$need_nexttrace" = "true" ]; then
             local arch=$(uname -m)
             local url=""
@@ -415,8 +433,12 @@ ensure_dependencies() {
         fi
         # 设置 NextTrace Token
         export NEXTTRACE_TOKEN=$(echo "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmxlSEFpT2pFM09UYzVNRE0wTnpjNU1EVXpNek1zSW1sd0lqb2laREE1TURFeE1HWmpPVGMxTVRWbFlUQXlOVFEzWVdaaVlqaGxaRFZoTkdWaVpXRTNaV1F3TmpjNE56UTBPR0U1TldJek5EVmhaR0kwTVRJME4yTXlPU0lzSW5WaElqb2lZVEl6TWpVMU5tUm1NbUl6TkdGa1pqazVNR1ppTkRWbVlqRmhaREJoTmpnM01qbGpaamc0TW1JNU5qYzVNR0UxTUdVNE5qRmxOelpsTUdFeU1qbG1PU0o5LkJ2RVBucEJFTnNjT3FMYlptN0R0R1U5NHVpdnh1X2FNLVZkenJHQk1NUWMK" | base64 -d 2>/dev/null)
-        
-        # 实际下载 - yt-dlp
+    else
+        export NEXTTRACE_BIN="false"
+    fi
+    
+    # 实际下载 - yt-dlp (仅回程/公共服务追踪需要，用于获取 YouTube CDN)
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
         if [ "$need_ytdlp" = "true" ]; then
             echo -n "  ├─ 正在下载 yt-dlp..."
             if retry_download "$TMP_DIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" "yt-dlp"; then
@@ -431,7 +453,6 @@ ensure_dependencies() {
             export YTDLP_BIN="yt-dlp"
         fi
     else
-        export NEXTTRACE_BIN="false"
         export YTDLP_BIN="false"
     fi
     
@@ -2304,82 +2325,30 @@ normalize_isp_name() {
 }
 
 get_trace_targets() {
-cat << 'EOF'
+    local targets_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/trace_targets.txt"
+    local targets_file="$TMP_DIR/trace_targets.txt"
+    
+    # 下载目标列表文件
+    if ! retry_download "$targets_file" "$targets_url" "Trace Targets" "--connect-timeout 5 --max-time 15"; then
+        warn "  Failed to download trace targets. Using fallback."
+        # 如果下载失败，使用内置的基础目标
+        cat << 'FALLBACK_EOF'
 #GROUP:中国境内目标
 北京电信 163 AS4134|ipv4.pek-4134.endpoint.nxtrace.org|ipv6.pek-4134.endpoint.nxtrace.org
-北京电信 CN2 AS4809|ipv4.pek-4809.endpoint.nxtrace.org|
 北京联通 169 AS4837|ipv4.pek-4837.endpoint.nxtrace.org|ipv6.pek-4837.endpoint.nxtrace.org
-北京联通 A网(CNC) AS9929|ipv4.pek-9929.endpoint.nxtrace.org|
 北京移动 CMNET AS9808|ipv4.pek-9808.endpoint.nxtrace.org|ipv6.pek-9808.endpoint.nxtrace.org
-北京移动 CMIN2 AS58807|ipv4.pek-58807.endpoint.nxtrace.org|
 上海电信 163 AS4134|ipv4.sha-4134.endpoint.nxtrace.org|ipv6.sha-4134.endpoint.nxtrace.org
-上海电信 CN2 AS4809|ipv4.sha-4809.endpoint.nxtrace.org|
 上海联通 169 AS4837|ipv4.sha-4837.endpoint.nxtrace.org|ipv6.sha-4837.endpoint.nxtrace.org
-上海联通 A网(CNC) AS9929|ipv4.sha-9929.endpoint.nxtrace.org|ipv6.sha-9929.endpoint.nxtrace.org
 上海移动 CMNET AS9808|ipv4.sha-9808.endpoint.nxtrace.org|ipv6.sha-9808.endpoint.nxtrace.org
-上海移动 CMIN2 AS58807|ipv4.sha-58807.endpoint.nxtrace.org|
 广州电信 163 AS4134|ipv4.can-4134.endpoint.nxtrace.org|ipv6.can-4134.endpoint.nxtrace.org
-广州电信 CN2 AS4809|ipv4.can-4809.endpoint.nxtrace.org|
 广州联通 169 AS4837|ipv4.can-4837.endpoint.nxtrace.org|ipv6.can-4837.endpoint.nxtrace.org
-广州联通 A网(CNC) AS9929|ipv4.can-9929.endpoint.nxtrace.org|
 广州移动 CMNET AS9808|ipv4.can-9808.endpoint.nxtrace.org|ipv6.can-9808.endpoint.nxtrace.org
-广州移动 CMIN2 AS58807|ipv4.can-58807.endpoint.nxtrace.org|
-#GROUP:主要国际网络运营商
-Telegram DC5 - Singapore, SG|telegram-dc5.jam114514.me|
-Telegram DC4 - Amsterdam, NL|telegram-dc4.jam114514.me|
-Telegram DC3 - Miami FL, USA|telegram-dc3.jam114514.me|
-Telegram DC2 - Amsterdam, NL|telegram-dc2.jam114514.me|
-Telegram DC1 - Miami FL, USA|telegram-dc1.jam114514.me|
-AWS 美国加利福尼亚州洛杉矶|aws.us.lax.jam114514.me|aws.us.lax.ipv6.jam114514.me
-AWS 美国弗吉尼亚州阿什本|aws.us.iad.jam114514.me|aws.us.iad.ipv6.jam114514.me
-AWS 德国黑森州美因河畔法兰克福|aws.de.fra.jam114514.me|aws.de.fra.ipv6.jam114514.me
-AWS 新加坡|aws.sg.sgp.jam114514.me|aws.sg.sgp.ipv6.jam114514.me
-GCP 美国加利福尼亚州洛杉矶|35.235.110.103|
-GCP 美国弗吉尼亚州阿什本|35.221.4.19|
-GCP 德国黑森州美因河畔法兰克福|34.40.56.112|
-GCP 新加坡|35.187.238.97|
-Cogent Communications AS174 - 德国法兰克福|t1.174.de.fra.jam114514.me|t1.174.de.fra.ipv6.jam114514.me
-Cogent Communications AS174 - 新加坡|t1.174.sg.sin.jam114514.me|t1.174.sg.sin.ipv6.jam114514.me
-Cogent Communications AS174 - 美国洛杉矶|t1.174.us.lax.jam114514.me|t1.174.us.lax.ipv6.jam114514.me
-Cogent Communications AS174 - 美国纽约|t1.174.us.nyc.jam114514.me|t1.174.us.nyc.ipv6.jam114514.me
-Telia Carrier AS1299 - 德国法兰克福|t1.1299.de.fra.jam114514.me|t1.1299.de.fra.ipv6.jam114514.me
-Telia Carrier AS1299 - 新加坡|t1.1299.sg.sin.jam114514.me|t1.1299.sg.sin.ipv6.jam114514.me
-Telia Carrier AS1299 - 美国洛杉矶|t1.1299.us.lax.jam114514.me|t1.1299.us.lax.ipv6.jam114514.me
-Telia Carrier AS1299 - 美国纽约|t1.1299.us.nyc.jam114514.me|t1.1299.us.nyc.ipv6.jam114514.me
-NTT Communications AS2914 - 德国法兰克福|t1.2914.de.fra.jam114514.me|t1.2914.de.fra.ipv6.jam114514.me
-NTT Communications AS2914 - 新加坡|t1.2914.sg.sin.jam114514.me|t1.2914.sg.sin.ipv6.jam114514.me
-NTT Communications AS2914 - 美国洛杉矶|t1.2914.us.lax.jam114514.me|t1.2914.us.lax.ipv6.jam114514.me
-NTT Communications AS2914 - 美国纽约|t1.2914.us.nyc.jam114514.me|t1.2914.us.nyc.ipv6.jam114514.me
-GTT Communications AS3257 - 德国法兰克福|t1.3257.de.fra.jam114514.me|t1.3257.de.fra.ipv6.jam114514.me
-GTT Communications AS3257 - 新加坡|t1.3257.sg.sin.jam114514.me|t1.3257.sg.sin.ipv6.jam114514.me
-GTT Communications AS3257 - 美国洛杉矶|t1.3257.us.lax.jam114514.me|t1.3257.us.lax.ipv6.jam114514.me
-GTT Communications AS3257 - 美国纽约|t1.3257.us.nyc.jam114514.me|t1.3257.us.nyc.ipv6.jam114514.me
-Level 3 / Lumen AS3356 - 德国法兰克福|t1.3356.de.fra.jam114514.me|
-Level 3 / Lumen AS3356 - 新加坡|t1.3356.sg.sin.jam114514.me|
-Level 3 / Lumen AS3356 - 美国洛杉矶|t1.3356.us.lax.jam114514.me|
-Level 3 / Lumen AS3356 - 美国纽约|t1.3356.us.nyc.jam114514.me|
-PCCW Global AS3491 - 德国法兰克福|t1.3491.de.fra.jam114514.me|t1.3491.de.fra.ipv6.jam114514.me
-PCCW Global AS3491 - 新加坡|t1.3491.sg.sin.jam114514.me|t1.3491.sg.sin.ipv6.jam114514.me
-PCCW Global AS3491 - 美国纽约|t1.3491.us.nyc.jam114514.me|t1.3491.us.nyc.ipv6.jam114514.me
-PCCW Global AS3491 - 美国洛杉矶|t1.3491.us.lax.jam114514.me|
-Orange AS5511 - 德国法兰克福|t1.5511.de.fra.jam114514.me|t1.5511.de.fra.ipv6.jam114514.me
-Orange AS5511 - 新加坡|t1.5511.sg.sin.jam114514.me|t1.5511.sg.sin.ipv6.jam114514.me
-Orange AS5511 - 美国洛杉矶|t1.5511.us.lax.jam114514.me|t1.5511.us.lax.ipv6.jam114514.me
-Orange AS5511 - 美国纽约|t1.5511.us.nyc.jam114514.me|t1.5511.us.nyc.ipv6.jam114514.me
-TATA Communications AS6453 - 德国法兰克福|t1.6453.de.fra.jam114514.me|t1.6453.de.fra.ipv6.jam114514.me
-TATA Communications AS6453 - 新加坡|t1.6453.sg.sin.jam114514.me|t1.6453.sg.sin.ipv6.jam114514.me
-TATA Communications AS6453 - 美国洛杉矶|t1.6453.us.lax.jam114514.me|t1.6453.us.lax.ipv6.jam114514.me
-TATA Communications AS6453 - 美国纽约|t1.6453.us.nyc.jam114514.me|t1.6453.us.nyc.ipv6.jam114514.me
-Zayo AS6461 - 德国法兰克福|t1.6461.de.fra.jam114514.me|
-Zayo AS6461 - 新加坡|t1.6461.sg.sin.jam114514.me|t1.6461.sg.sin.ipv6.jam114514.me
-Zayo AS6461 - 美国洛杉矶|t1.6461.us.lax.jam114514.me|t1.6461.us.lax.ipv6.jam114514.me
-Zayo AS6461 - 美国纽约|t1.6461.us.nyc.jam114514.me|t1.6461.us.nyc.ipv6.jam114514.me
-Telecom Italia Sparkle AS6762 - 德国法兰克福|t1.6762.de.fra.jam114514.me|t1.6762.de.fra.ipv6.jam114514.me
-Telecom Italia Sparkle AS6762 - 新加坡|t1.6762.sg.sin.jam114514.me|t1.6762.sg.sin.ipv6.jam114514.me
-Telecom Italia Sparkle AS6762 - 美国洛杉矶|t1.6762.us.lax.jam114514.me|t1.6762.us.lax.ipv6.jam114514.me
-Telecom Italia Sparkle AS6762 - 美国纽约|t1.6762.us.nyc.jam114514.me|t1.6762.us.nyc.ipv6.jam114514.me
-
-EOF
+FALLBACK_EOF
+        return
+    fi
+    
+    # 过滤掉纯注释行（保留 #GROUP: 分组标记），输出内容
+    grep -v '^# ' "$targets_file" | grep -v '^$'
 }
 
 run_trace_test() {
@@ -2628,7 +2597,7 @@ run_trace_test() {
                         
                         # 地理位置：国家 省份 城市（过滤空值、去重、去掉"市""省""州"后缀）
                         (if $p.Geo then
-                            ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | map(select(. and . != "") | gsub("市$|省$|州$"; "")) | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
+                            ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end) | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
                         else "" end) as $loc_raw |
                         (if $loc_raw == "" then "-" else $loc_raw end) as $loc |
                         
@@ -2700,6 +2669,183 @@ run_trace_test() {
     info "  └─ 路由追踪完成"
 }
 
+# =========================
+# 去程路由追踪 (Forward Route Trace)
+# 使用 nexttrace --from 参数从全球各地追踪到本服务器
+# =========================
+run_forward_trace_test() {
+    log "开始去程路由追踪..."
+    
+    if [ "$NEXTTRACE_BIN" == "false" ] || [ -z "$NEXTTRACE_BIN" ]; then 
+        warn "  └─ NextTrace 二进制未找到或下载失败，跳过"; 
+        return; 
+    fi
+    
+    if [ ! -x "$NEXTTRACE_BIN" ] && ! command -v "$NEXTTRACE_BIN" >/dev/null 2>&1; then
+        warn "  └─ NextTrace ($NEXTTRACE_BIN) 不可执行，跳过";
+        return;
+    fi
+    
+    # 获取本机公网 IPv4 地址
+    local my_ipv4=""
+    if [ "$HAS_V4" = "true" ]; then
+        my_ipv4=$(curl -s4 --max-time 5 https://api.ipify.org 2>/dev/null || \
+                  curl -s4 --max-time 5 https://ipv4.icanhazip.com 2>/dev/null || \
+                  curl -s4 --max-time 5 https://ifconfig.me 2>/dev/null)
+    fi
+    
+    if [ -z "$my_ipv4" ]; then
+        warn "  └─ 无法获取本机公网 IPv4 地址，跳过去程路由追踪"
+        return
+    fi
+    
+    info "  ├─ 目标 IP: $my_ipv4"
+    
+    # 去程追踪源列表: 国家+ASN 组合
+    # 格式: "显示名称|--from参数"
+    # 下载去程追踪源列表
+    local sources_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/forward_sources.txt"
+    local sources_file="$TMP_DIR/forward_sources.txt"
+    
+    echo "  ├─ 下载追踪源列表..."
+    if ! retry_download "$sources_file" "$sources_url" "Forward Sources" "--connect-timeout 5 --max-time 10"; then
+        warn "  │  └─ 下载失败，使用内置源"
+        # Fallback: 使用基础的三大运营商
+        cat > "$sources_file" << 'FALLBACK_EOF'
+中国电信 163|CN+AS4134
+中国联通 169|CN+AS4837
+中国移动 CMNET|CN+AS9808
+FALLBACK_EOF
+    fi
+    
+    # 读取源列表到数组
+    local forward_sources=()
+    while IFS= read -r line; do
+        # 跳过空行和注释行（但保留 #GROUP: 标记）
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^#[^G] ]] && continue
+        [[ "$line" =~ ^#$ ]] && continue
+        forward_sources+=("$line")
+    done < "$sources_file"
+    
+    # 计算实际源数量（排除 #GROUP: 行）
+    local total=0
+    for src in "${forward_sources[@]}"; do
+        [[ "$src" != "#GROUP:"* ]] && total=$((total+1))
+    done
+    local idx=0
+    
+    # 写入报告头
+    {
+        echo "## 去程路由追踪"
+        echo ""
+        echo "> 从全球各地追踪到本服务器 \`$my_ipv4\`"
+        echo ""
+    } >> "$REPORT_FILE"
+    
+    for source in "${forward_sources[@]}"; do
+        # 处理分组标记
+        if [[ "$source" == "#GROUP:"* ]]; then
+            local group_name="${source#\#GROUP:}"
+            echo "  ├── $group_name"
+            {
+                echo ""
+                echo "### $group_name"
+                echo ""
+            } >> "$REPORT_FILE"
+            continue
+        fi
+        
+        idx=$((idx+1))
+        local name="${source%%|*}"
+        local from_param="${source##*|}"
+        
+        echo "  │  ├─ [$idx/$total] 从 $name 追踪..."
+        
+        # 运行 nexttrace --from
+        local raw_output=""
+        local err_file="$TMP_DIR/nt_fwd_err_$idx.log"
+        raw_output=$("$NEXTTRACE_BIN" --json --from "$from_param" "$my_ipv4" 2>"$err_file")
+        local err_out=$(cat "$err_file" 2>/dev/null)
+        rm -f "$err_file"
+        
+        # 提取 JSON 部分
+        local json=$(echo "$raw_output" | sed 's/^[^{]*//')
+        
+        if [ -z "$json" ] || ! echo "$json" | jq -e . >/dev/null 2>&1; then
+            echo "  │  └─ 失败: 无效输出"
+            if [ -n "$err_out" ]; then
+                local clean_err=$(echo "$err_out" | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
+                echo "  │     (错误): ${clean_err:0:80}"
+            fi
+            continue
+        fi
+        
+        # 解析 JSON 并生成表格
+        local table="| 跳数 | IP | ASN | 位置 | 运营商 | 延迟 |\n"
+        table+="|---:|:---|:---|:---|:---|---:|\n"
+        
+        local rows=$(echo "$json" | jq -r '
+            .Hops | to_entries[] |
+            (.key + 1) as $hopnum |
+            .value as $probes |
+            ([$probes[] | select(.Success == true)][0] // $probes[0] // {}) as $p |
+            (if $p.Address then ($p.Address.IP // "*") else "*" end) as $ip |
+            (if $p.Geo and ($p.Geo.asnumber // "") != "" then "AS" + $p.Geo.asnumber else "-" end) as $asn |
+            (if $p.Geo then
+                ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end) | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
+            else "" end) as $loc_raw |
+            (if $loc_raw == "" then "-" else $loc_raw end) as $loc |
+            (if $p.Geo then
+                (if ($p.Geo.isp // "") != "" then $p.Geo.isp
+                 elif ($p.Geo.owner // "") != "" then $p.Geo.owner
+                 else "-" end)
+            else "-" end) as $isp |
+            (if $p.RTT and $p.RTT > 0 then
+                (($p.RTT / 1000000 * 100 | floor) / 100 | tostring)
+            else "-" end) as $rtt |
+            [$hopnum, $ip, $asn, $loc, $isp, $rtt] | @tsv
+        ' 2>/dev/null)
+        
+        if [ -n "$rows" ]; then
+            while IFS=$'\t' read -r ttl ip asn loc isp rtt; do
+                [ -z "$ip" ] && continue
+                [ "$ip" = "*" ] && ip="-"
+                
+                # 运营商名称规范化
+                isp=$(normalize_isp_name "$isp")
+                
+                # RTT格式
+                if [ "$rtt" != "-" ] && [ -n "$rtt" ]; then
+                    rtt_display="$rtt ms"
+                else
+                    rtt_display="-"
+                fi
+                table+="| $ttl | $ip | $asn | $loc | $isp | $rtt_display |\n"
+            done <<< "$rows"
+            
+            echo "  │  └─ 追踪完成"
+            
+            # 写入报告
+            {
+                echo "### $name"
+                echo ""
+                echo "源: \`--from $from_param\`"
+                echo ""
+                echo -e "$table"
+                echo ""
+            } >> "$REPORT_FILE"
+        else
+            echo "  │  └─ 失败: 解析结果为空"
+        fi
+        
+        # 避免请求过快
+        sleep 0.5
+    done
+    
+    info "  └─ 去程路由追踪完成"
+}
+
 init_report() {
     > "$REPORT_FILE"
     echo "# Bench Report" >> "$REPORT_FILE"
@@ -2727,7 +2873,8 @@ EOF
     echo -e "\n--- 可选测试模式："
     echo -e "  -n, --network       综合网络测试 (包含: 基础网络信息、BGP透视、IP质量检测、服务解锁、Speedtest测速)"
     echo -e "  -h, --hardware      硬件性能测试 (包含: CPU Benchmark、内存、磁盘IO)"
-    echo -e "  -t, --nexttrace     路由追踪 (包含: 回程路由追踪、公共服务/CDN节点追踪)"
+    echo -e "  -t, --nexttrace     回程路由追踪 (包含: 从本服务器到全球目标的路由追踪)"
+    echo -e "  -f, --forward       去程路由追踪 (包含: 从全球各地(三大运营商等)到本服务器的路由追踪)"
     echo -e "  -p, --public        公共服务 (包含: 仅对 Google/Cloudflare DNS 等公共节点进行路由追踪)"
     echo -e "  -i, --ip-quality    IP 质量检测 (包含: IP欺诈值、风险评分、流媒体解锁详情)"
     echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测)"
@@ -2760,7 +2907,9 @@ EOF
     elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: 硬件性能测试 (-h)${NC}"
     elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
-        log "${CYAN}模式: 路由追踪测试 (-t)${NC}"
+        log "${CYAN}模式: 回程路由追踪测试 (-t)${NC}"
+    elif [ "$RUN_FORWARD_TRACE" = "true" ]; then 
+        log "${CYAN}模式: 去程路由追踪测试 (-f)${NC}"
     elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_STREAM" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: IP 质量检测 (-i)${NC}"
     elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_IP_QUALITY" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
@@ -2823,6 +2972,11 @@ EOF
     # 路由追踪测试
     if [ "$RUN_TRACE" = "true" ]; then
         run_trace_test
+    fi
+    
+    # 去程路由追踪测试
+    if [ "$RUN_FORWARD_TRACE" = "true" ]; then
+        run_forward_trace_test
     fi
     
     info "测试完成! 报告已保存至 $REPORT_FILE"

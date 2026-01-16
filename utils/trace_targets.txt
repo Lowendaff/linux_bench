@@ -1,0 +1,79 @@
+# 回程路由追踪目标列表
+# 格式: 名称|IPv4目标|IPv6目标
+# 每行一个目标，#开头的行为注释或分组标记
+# #GROUP:分组名 用于在报告中分组显示
+
+#GROUP:中国境内目标
+北京电信 163 AS4134|ipv4.pek-4134.endpoint.nxtrace.org|ipv6.pek-4134.endpoint.nxtrace.org
+北京电信 CN2 AS4809|ipv4.pek-4809.endpoint.nxtrace.org|
+北京联通 169 AS4837|ipv4.pek-4837.endpoint.nxtrace.org|ipv6.pek-4837.endpoint.nxtrace.org
+北京联通 A网(CNC) AS9929|ipv4.pek-9929.endpoint.nxtrace.org|
+北京移动 CMNET AS9808|ipv4.pek-9808.endpoint.nxtrace.org|ipv6.pek-9808.endpoint.nxtrace.org
+北京移动 CMIN2 AS58807|ipv4.pek-58807.endpoint.nxtrace.org|
+上海电信 163 AS4134|ipv4.sha-4134.endpoint.nxtrace.org|ipv6.sha-4134.endpoint.nxtrace.org
+上海电信 CN2 AS4809|ipv4.sha-4809.endpoint.nxtrace.org|
+上海联通 169 AS4837|ipv4.sha-4837.endpoint.nxtrace.org|ipv6.sha-4837.endpoint.nxtrace.org
+上海联通 A网(CNC) AS9929|ipv4.sha-9929.endpoint.nxtrace.org|ipv6.sha-9929.endpoint.nxtrace.org
+上海移动 CMNET AS9808|ipv4.sha-9808.endpoint.nxtrace.org|ipv6.sha-9808.endpoint.nxtrace.org
+上海移动 CMIN2 AS58807|ipv4.sha-58807.endpoint.nxtrace.org|
+广州电信 163 AS4134|ipv4.can-4134.endpoint.nxtrace.org|ipv6.can-4134.endpoint.nxtrace.org
+广州电信 CN2 AS4809|ipv4.can-4809.endpoint.nxtrace.org|
+广州联通 169 AS4837|ipv4.can-4837.endpoint.nxtrace.org|ipv6.can-4837.endpoint.nxtrace.org
+广州联通 A网(CNC) AS9929|ipv4.can-9929.endpoint.nxtrace.org|
+广州移动 CMNET AS9808|ipv4.can-9808.endpoint.nxtrace.org|ipv6.can-9808.endpoint.nxtrace.org
+广州移动 CMIN2 AS58807|ipv4.can-58807.endpoint.nxtrace.org|
+
+#GROUP:主要国际网络运营商
+Telegram DC5 - Singapore, SG|telegram-dc5.jam114514.me|
+Telegram DC4 - Amsterdam, NL|telegram-dc4.jam114514.me|
+Telegram DC3 - Miami FL, USA|telegram-dc3.jam114514.me|
+Telegram DC2 - Amsterdam, NL|telegram-dc2.jam114514.me|
+Telegram DC1 - Miami FL, USA|telegram-dc1.jam114514.me|
+AWS 美国加利福尼亚州洛杉矶|aws.us.lax.jam114514.me|aws.us.lax.ipv6.jam114514.me
+AWS 美国弗吉尼亚州阿什本|aws.us.iad.jam114514.me|aws.us.iad.ipv6.jam114514.me
+AWS 德国黑森州美因河畔法兰克福|aws.de.fra.jam114514.me|aws.de.fra.ipv6.jam114514.me
+AWS 新加坡|aws.sg.sgp.jam114514.me|aws.sg.sgp.ipv6.jam114514.me
+GCP 美国加利福尼亚州洛杉矶|35.235.110.103|
+GCP 美国弗吉尼亚州阿什本|35.221.4.19|
+GCP 德国黑森州美因河畔法兰克福|34.40.56.112|
+GCP 新加坡|35.187.238.97|
+Cogent Communications AS174 - 德国法兰克福|t1.174.de.fra.jam114514.me|t1.174.de.fra.ipv6.jam114514.me
+Cogent Communications AS174 - 新加坡|t1.174.sg.sin.jam114514.me|t1.174.sg.sin.ipv6.jam114514.me
+Cogent Communications AS174 - 美国洛杉矶|t1.174.us.lax.jam114514.me|t1.174.us.lax.ipv6.jam114514.me
+Cogent Communications AS174 - 美国纽约|t1.174.us.nyc.jam114514.me|t1.174.us.nyc.ipv6.jam114514.me
+Telia Carrier AS1299 - 德国法兰克福|t1.1299.de.fra.jam114514.me|t1.1299.de.fra.ipv6.jam114514.me
+Telia Carrier AS1299 - 新加坡|t1.1299.sg.sin.jam114514.me|t1.1299.sg.sin.ipv6.jam114514.me
+Telia Carrier AS1299 - 美国洛杉矶|t1.1299.us.lax.jam114514.me|t1.1299.us.lax.ipv6.jam114514.me
+Telia Carrier AS1299 - 美国纽约|t1.1299.us.nyc.jam114514.me|t1.1299.us.nyc.ipv6.jam114514.me
+NTT Communications AS2914 - 德国法兰克福|t1.2914.de.fra.jam114514.me|t1.2914.de.fra.ipv6.jam114514.me
+NTT Communications AS2914 - 新加坡|t1.2914.sg.sin.jam114514.me|t1.2914.sg.sin.ipv6.jam114514.me
+NTT Communications AS2914 - 美国洛杉矶|t1.2914.us.lax.jam114514.me|t1.2914.us.lax.ipv6.jam114514.me
+NTT Communications AS2914 - 美国纽约|t1.2914.us.nyc.jam114514.me|t1.2914.us.nyc.ipv6.jam114514.me
+GTT Communications AS3257 - 德国法兰克福|t1.3257.de.fra.jam114514.me|t1.3257.de.fra.ipv6.jam114514.me
+GTT Communications AS3257 - 新加坡|t1.3257.sg.sin.jam114514.me|t1.3257.sg.sin.ipv6.jam114514.me
+GTT Communications AS3257 - 美国洛杉矶|t1.3257.us.lax.jam114514.me|t1.3257.us.lax.ipv6.jam114514.me
+GTT Communications AS3257 - 美国纽约|t1.3257.us.nyc.jam114514.me|t1.3257.us.nyc.ipv6.jam114514.me
+Level 3 / Lumen AS3356 - 德国法兰克福|t1.3356.de.fra.jam114514.me|
+Level 3 / Lumen AS3356 - 新加坡|t1.3356.sg.sin.jam114514.me|
+Level 3 / Lumen AS3356 - 美国洛杉矶|t1.3356.us.lax.jam114514.me|
+Level 3 / Lumen AS3356 - 美国纽约|t1.3356.us.nyc.jam114514.me|
+PCCW Global AS3491 - 德国法兰克福|t1.3491.de.fra.jam114514.me|t1.3491.de.fra.ipv6.jam114514.me
+PCCW Global AS3491 - 新加坡|t1.3491.sg.sin.jam114514.me|t1.3491.sg.sin.ipv6.jam114514.me
+PCCW Global AS3491 - 美国纽约|t1.3491.us.nyc.jam114514.me|t1.3491.us.nyc.ipv6.jam114514.me
+PCCW Global AS3491 - 美国洛杉矶|t1.3491.us.lax.jam114514.me|
+Orange AS5511 - 德国法兰克福|t1.5511.de.fra.jam114514.me|t1.5511.de.fra.ipv6.jam114514.me
+Orange AS5511 - 新加坡|t1.5511.sg.sin.jam114514.me|t1.5511.sg.sin.ipv6.jam114514.me
+Orange AS5511 - 美国洛杉矶|t1.5511.us.lax.jam114514.me|t1.5511.us.lax.ipv6.jam114514.me
+Orange AS5511 - 美国纽约|t1.5511.us.nyc.jam114514.me|t1.5511.us.nyc.ipv6.jam114514.me
+TATA Communications AS6453 - 德国法兰克福|t1.6453.de.fra.jam114514.me|t1.6453.de.fra.ipv6.jam114514.me
+TATA Communications AS6453 - 新加坡|t1.6453.sg.sin.jam114514.me|t1.6453.sg.sin.ipv6.jam114514.me
+TATA Communications AS6453 - 美国洛杉矶|t1.6453.us.lax.jam114514.me|t1.6453.us.lax.ipv6.jam114514.me
+TATA Communications AS6453 - 美国纽约|t1.6453.us.nyc.jam114514.me|t1.6453.us.nyc.ipv6.jam114514.me
+Zayo AS6461 - 德国法兰克福|t1.6461.de.fra.jam114514.me|
+Zayo AS6461 - 新加坡|t1.6461.sg.sin.jam114514.me|t1.6461.sg.sin.ipv6.jam114514.me
+Zayo AS6461 - 美国洛杉矶|t1.6461.us.lax.jam114514.me|t1.6461.us.lax.ipv6.jam114514.me
+Zayo AS6461 - 美国纽约|t1.6461.us.nyc.jam114514.me|t1.6461.us.nyc.ipv6.jam114514.me
+Telecom Italia Sparkle AS6762 - 德国法兰克福|t1.6762.de.fra.jam114514.me|t1.6762.de.fra.ipv6.jam114514.me
+Telecom Italia Sparkle AS6762 - 新加坡|t1.6762.sg.sin.jam114514.me|t1.6762.sg.sin.ipv6.jam114514.me
+Telecom Italia Sparkle AS6762 - 美国洛杉矶|t1.6762.us.lax.jam114514.me|t1.6762.us.lax.ipv6.jam114514.me
+Telecom Italia Sparkle AS6762 - 美国纽约|t1.6762.us.nyc.jam114514.me|t1.6762.us.nyc.ipv6.jam114514.me
