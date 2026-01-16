@@ -64,6 +64,8 @@ RUN_TRACE=true
 RUN_FORWARD_TRACE=false
 SKIP_V4=false
 SKIP_V6=false
+NORMALIZE_OUTPUT=false  # 是否进行数据标准化（地名去后缀、运营商名统一）
+RAW_OUTPUT=true  # 默认输出原始未标准化的数据
 
 # 报告名称前缀 (根据参数动态设置)
 REPORT_PREFIX="report"
@@ -169,6 +171,15 @@ for arg in "$@"; do
             ;;
         -6)
             SKIP_V4=true
+            shift
+            ;;
+        --raw)
+            RAW_OUTPUT=true
+            NORMALIZE_OUTPUT=false
+            shift
+            ;;
+        --normalize)
+            NORMALIZE_OUTPUT=true
             shift
             ;;
     esac
@@ -2581,7 +2592,17 @@ run_trace_test() {
                     local table="| 跳数 | IP | ASN | 位置 | 运营商 | 延迟 |\n"
                     table+="|---:|:---|:---|:---|:---|---:|\n"
                     
-                    local rows=$(echo "$json" | jq -r '
+                        # 根据 NORMALIZE_OUTPUT 构建不同的 jq 查询
+                        local jq_loc_filter
+                        if [ "$NORMALIZE_OUTPUT" = "true" ]; then
+                            # 标准化输出：去掉"市""省""州"后缀
+                            jq_loc_filter='map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end)'
+                        else
+                            # 默认原始输出：不处理后缀
+                            jq_loc_filter='map(select(. and . != ""))'
+                        fi
+                        
+                        local rows=$(echo "$json" | jq -r '
                         # NextTrace JSON: { Hops: [ [probe0, probe1, probe2], ... ] }
                         .Hops | to_entries[] |
                         (.key + 1) as $hopnum |
@@ -2595,9 +2616,9 @@ run_trace_test() {
                         # ASN：只有非空字符串才显示
                         (if $p.Geo and ($p.Geo.asnumber // "") != "" then "AS" + $p.Geo.asnumber else "-" end) as $asn |
                         
-                        # 地理位置：国家 省份 城市（过滤空值、去重、去掉"市""省""州"后缀）
+                        # 地理位置：国家 省份 城市（过滤空值、去重）
                         (if $p.Geo then
-                            ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end) | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
+                            ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | '"$jq_loc_filter"' | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
                         else "" end) as $loc_raw |
                         (if $loc_raw == "" then "-" else $loc_raw end) as $loc |
                         
@@ -2630,8 +2651,10 @@ run_trace_test() {
                             fi
                             
                             
-                            # 运营商名称规范化
-                            isp=$(normalize_isp_name "$isp")
+                            # 运营商名称规范化（仅在标准化输出模式下）
+                            if [ "$NORMALIZE_OUTPUT" = "true" ]; then
+                                isp=$(normalize_isp_name "$isp")
+                            fi
                             # RTT格式：有值时追加ms，无值时显示"-"
                             if [ "$rtt" != "-" ] && [ -n "$rtt" ]; then
                                 rtt_display="$rtt ms"
@@ -2785,6 +2808,14 @@ FALLBACK_EOF
         local table="| 跳数 | IP | ASN | 位置 | 运营商 | 延迟 |\n"
         table+="|---:|:---|:---|:---|:---|---:|\n"
         
+        # 根据 NORMALIZE_OUTPUT 构建不同的 jq 查询
+        local jq_loc_filter
+        if [ "$NORMALIZE_OUTPUT" = "true" ]; then
+            jq_loc_filter='map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end)'
+        else
+            jq_loc_filter='map(select(. and . != ""))'
+        fi
+        
         local rows=$(echo "$json" | jq -r '
             .Hops | to_entries[] |
             (.key + 1) as $hopnum |
@@ -2793,7 +2824,7 @@ FALLBACK_EOF
             (if $p.Address then ($p.Address.IP // "*") else "*" end) as $ip |
             (if $p.Geo and ($p.Geo.asnumber // "") != "" then "AS" + $p.Geo.asnumber else "-" end) as $asn |
             (if $p.Geo then
-                ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | map(select(. and . != "") | if (. | length) > 2 then gsub("市$|省$|州$"; "") else . end) | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
+                ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | '"$jq_loc_filter"' | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
             else "" end) as $loc_raw |
             (if $loc_raw == "" then "-" else $loc_raw end) as $loc |
             (if $p.Geo then
@@ -2812,8 +2843,10 @@ FALLBACK_EOF
                 [ -z "$ip" ] && continue
                 [ "$ip" = "*" ] && ip="-"
                 
-                # 运营商名称规范化
-                isp=$(normalize_isp_name "$isp")
+                # 运营商名称规范化（仅在标准化输出模式下）
+                if [ "$NORMALIZE_OUTPUT" = "true" ]; then
+                    isp=$(normalize_isp_name "$isp")
+                fi
                 
                 # RTT格式
                 if [ "$rtt" != "-" ] && [ -n "$rtt" ]; then
