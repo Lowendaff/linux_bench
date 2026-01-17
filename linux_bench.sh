@@ -2787,7 +2787,8 @@ FALLBACK_EOF
     {
         echo "## 去程路由追踪"
         echo ""
-        echo "> 从全球各地追踪到本服务器 \`$my_ipv4\`"
+        local masked_ip=$(echo "$my_ipv4" | sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*\.[0-9]*/\1.xx.xx/')
+        echo "> 从全球各地追踪到本服务器 \`$masked_ip\`"
         echo ""
     } >> "$REPORT_FILE"
     
