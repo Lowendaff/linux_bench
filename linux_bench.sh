@@ -327,7 +327,7 @@ retry_download() {
 ensure_dependencies() {
     log "正在检查依赖..."
     
-    local target_pkgs="curl jq"
+    local target_pkgs="curl jq tar xz-utils"
     
     # 根据 Flag 添加依赖
     if [ "$RUN_CPU" = "true" ] || [ "$RUN_DISK" = "true" ]; then
