@@ -1346,6 +1346,7 @@ run_gb6_test() {
     # === Streaming Report ===
     {
         echo "## Geekbench 6 测试"
+        echo ""
         [ -n "$gb6_version" ] && echo "版本: $gb6_version"
         echo ""
         echo "| 测试项目 | 测试结果 |"
@@ -1567,7 +1568,7 @@ run_iperf_test() {
             echo ""
             echo "🌐 青毅云计算 (YOUTHIDC)  "
             echo "⚡️ 国内大带宽独享服务器，IEPL 跨境专线  "
-            echo "💬 Telegram 群组：https://t.me/YouthIDC  "
+            echo "💬 Telegram 群组：https://t.me/YouthIDC"
             echo ""
             echo "| 节点 | 线程 | 发送带宽 | 接收带宽 |"
             echo "| :--- | :--- | :--- | :--- |"
@@ -2788,7 +2789,7 @@ FALLBACK_EOF
         echo "## 去程路由追踪"
         echo ""
         local masked_ip=$(echo "$my_ipv4" | sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*\.[0-9]*/\1.xx.xx/')
-        echo "> 从全球各地追踪到本服务器 \`$masked_ip\`"
+        echo "从全球各地追踪到本服务器 \`$masked_ip\`"
         echo ""
     } >> "$REPORT_FILE"
     
