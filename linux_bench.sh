@@ -701,27 +701,57 @@ collect_network_info() {
     if [ "$SKIP_V4" = "false" ]; then
         echo "  ├─ 查询 IPv4 信息..."
         local v4_json=""
-        local v4_retry=0
-        local v4_max_retry=3
+        local v4_source=""
+        local v4_success=false
         
-        while [ $v4_retry -lt $v4_max_retry ]; do
-            v4_json=$(curl -s -4 --max-time 10 https://ipapi.co/json/ 2>/dev/null)
+        # 定义多个 API 源
+        local v4_apis=(
+            "https://ipapi.co/json/"
+            "https://api.ip.sb/geoip"
+            "https://ipinfo.io/json"
+        )
+        local v4_api_names=("ipapi.co" "ip.sb" "ipinfo.io")
+        
+        for i in "${!v4_apis[@]}"; do
+            local api_url="${v4_apis[$i]}"
+            local api_name="${v4_api_names[$i]}"
+            
+            v4_json=$(curl -s -4 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
             if [ -n "$v4_json" ] && echo "$v4_json" | jq -e '.ip' >/dev/null 2>&1; then
+                v4_source="$api_name"
+                v4_success=true
                 break
             fi
-            v4_retry=$((v4_retry + 1))
-            if [ $v4_retry -lt $v4_max_retry ]; then
-                echo "  │  ├─ IPv4 查询失败，重试 ($v4_retry/$v4_max_retry)..."
-                sleep 3
+            
+            if [ $i -lt $((${#v4_apis[@]} - 1)) ]; then
+                echo "  │  ├─ IPv4 查询失败 ($api_name)，尝试备用源..."
             fi
         done
         
-        if [ -n "$v4_json" ] && echo "$v4_json" | jq -e '.ip' >/dev/null 2>&1; then
+        if [ "$v4_success" = "true" ]; then
             HAS_V4="true"
             NET_V4_IP=$(echo "$v4_json" | jq -r '.ip // empty')
-            NET_V4_ORG=$(echo "$v4_json" | jq -r '.org // empty')
-            NET_V4_ASN=$(echo "$v4_json" | jq -r '.asn // empty' | sed 's/AS//')
-            NET_V4_LOC="$(echo "$v4_json" | jq -r '.city // empty'), $(echo "$v4_json" | jq -r '.country_code // empty')"
+            
+            # 根据不同 API 解析字段（兼容不同返回格式）
+            case "$v4_source" in
+                "ipapi.co")
+                    NET_V4_ORG=$(echo "$v4_json" | jq -r '.org // empty')
+                    NET_V4_ASN=$(echo "$v4_json" | jq -r '.asn // empty' | sed 's/AS//')
+                    NET_V4_LOC="$(echo "$v4_json" | jq -r '.city // empty'), $(echo "$v4_json" | jq -r '.country_code // empty')"
+                    ;;
+                "ip.sb")
+                    NET_V4_ORG=$(echo "$v4_json" | jq -r '.organization // .isp // empty')
+                    NET_V4_ASN=$(echo "$v4_json" | jq -r '.asn // empty' | sed 's/AS//')
+                    NET_V4_LOC="$(echo "$v4_json" | jq -r '.city // empty'), $(echo "$v4_json" | jq -r '.country_code // empty')"
+                    ;;
+                "ipinfo.io")
+                    # ipinfo.io 格式: org = "AS12345 Company Name"
+                    local org_raw=$(echo "$v4_json" | jq -r '.org // empty')
+                    NET_V4_ASN=$(echo "$org_raw" | grep -oP '^AS\K[0-9]+' || echo "")
+                    NET_V4_ORG=$(echo "$org_raw" | sed 's/^AS[0-9]* //')
+                    NET_V4_LOC="$(echo "$v4_json" | jq -r '.city // empty'), $(echo "$v4_json" | jq -r '.country // empty')"
+                    ;;
+            esac
         else
             HAS_V4=""
             NET_V4_IP="N/A"
@@ -750,29 +780,58 @@ collect_network_info() {
     
     if [ "$SKIP_V6" = "false" ]; then
         echo "  ├─ 查询 IPv6 信息..."
-        # ipapi.co 支持 IPv6 访问，强制使用 -6 会通过 IPv6 获取信息
         local v6_json=""
-        local v6_retry=0
-        local v6_max_retry=3
+        local v6_source=""
+        local v6_success=false
         
-        while [ $v6_retry -lt $v6_max_retry ]; do
-            v6_json=$(curl -s -6 --max-time 10 https://ipapi.co/json/ 2>/dev/null)
+        # 定义多个 API 源（仅支持 IPv6 的服务）
+        local v6_apis=(
+            "https://ipapi.co/json/"
+            "https://api.ip.sb/geoip"
+            "https://ipinfo.io/json"
+        )
+        local v6_api_names=("ipapi.co" "ip.sb" "ipinfo.io")
+        
+        for i in "${!v6_apis[@]}"; do
+            local api_url="${v6_apis[$i]}"
+            local api_name="${v6_api_names[$i]}"
+            
+            v6_json=$(curl -s -6 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
             if [ -n "$v6_json" ] && echo "$v6_json" | jq -e '.ip' >/dev/null 2>&1; then
+                v6_source="$api_name"
+                v6_success=true
                 break
             fi
-            v6_retry=$((v6_retry + 1))
-            if [ $v6_retry -lt $v6_max_retry ]; then
-                echo "  │  ├─ IPv6 查询失败，重试 ($v6_retry/$v6_max_retry)..."
-                sleep 3
+            
+            if [ $i -lt $((${#v6_apis[@]} - 1)) ]; then
+                echo "  │  ├─ IPv6 查询失败 ($api_name)，尝试备用源..."
             fi
         done
         
-        if [ -n "$v6_json" ] && echo "$v6_json" | jq -e '.ip' >/dev/null 2>&1; then
+        if [ "$v6_success" = "true" ]; then
             HAS_V6="true"
             NET_V6_IP=$(echo "$v6_json" | jq -r '.ip // empty')
-            NET_V6_ORG=$(echo "$v6_json" | jq -r '.org // empty')
-            NET_V6_ASN=$(echo "$v6_json" | jq -r '.asn // empty' | sed 's/AS//')
-            NET_V6_LOC="$(echo "$v6_json" | jq -r '.city // empty'), $(echo "$v6_json" | jq -r '.country_code // empty')"
+            
+            # 根据不同 API 解析字段（兼容不同返回格式）
+            case "$v6_source" in
+                "ipapi.co")
+                    NET_V6_ORG=$(echo "$v6_json" | jq -r '.org // empty')
+                    NET_V6_ASN=$(echo "$v6_json" | jq -r '.asn // empty' | sed 's/AS//')
+                    NET_V6_LOC="$(echo "$v6_json" | jq -r '.city // empty'), $(echo "$v6_json" | jq -r '.country_code // empty')"
+                    ;;
+                "ip.sb")
+                    NET_V6_ORG=$(echo "$v6_json" | jq -r '.organization // .isp // empty')
+                    NET_V6_ASN=$(echo "$v6_json" | jq -r '.asn // empty' | sed 's/AS//')
+                    NET_V6_LOC="$(echo "$v6_json" | jq -r '.city // empty'), $(echo "$v6_json" | jq -r '.country_code // empty')"
+                    ;;
+                "ipinfo.io")
+                    # ipinfo.io 格式: org = "AS12345 Company Name"
+                    local org_raw=$(echo "$v6_json" | jq -r '.org // empty')
+                    NET_V6_ASN=$(echo "$org_raw" | grep -oP '^AS\K[0-9]+' || echo "")
+                    NET_V6_ORG=$(echo "$org_raw" | sed 's/^AS[0-9]* //')
+                    NET_V6_LOC="$(echo "$v6_json" | jq -r '.city // empty'), $(echo "$v6_json" | jq -r '.country // empty')"
+                    ;;
+            esac
         else
             HAS_V6=""
             NET_V6_IP="N/A"
