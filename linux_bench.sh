@@ -2071,8 +2071,23 @@ ${stream_output_v6}"
                    ! echo "$line" | grep -qE '脚本适配|您的网络|测试时间|版本|运行次数|t\.me|github|网站|详情' && \
                    ! echo "$line" | grep -qiE '^\s*(jq\s*:|parse error|Invalid)'; then
                     # 解析服务名称和状态
-                    local service=$(echo "$line" | sed 's/^\s*//' | cut -d':' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                    local status=$(echo "$line" | sed 's/^\s*//' | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                    # 状态通常是 Yes/No/Failed 开头，找最后一个 ":\s+(Yes|No|Failed|Region|City|JPY|JP|...)" 作为分隔点
+                    local trimmed=$(echo "$line" | sed 's/^\s*//')
+                    # 使用 sed 匹配最后一个 ":\s+状态" 模式
+                    if echo "$trimmed" | grep -qE ':\s+(Yes|No|Failed|[A-Z]{2,3}(\s|$)|Region|City|Country)'; then
+                        # 找到最后一个 ": " 后跟状态关键词的位置，用 awk 处理
+                        local service=$(echo "$trimmed" | sed -E 's/:\s+(Yes|No|Failed).*$//' | sed -E 's/:\s+[A-Z]{2,3}(\s|$).*$//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        local status=$(echo "$trimmed" | grep -oE '(Yes|No|Failed).*$' | head -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        # 如果 status 为空，尝试其他模式
+                        if [ -z "$status" ]; then
+                            status=$(echo "$trimmed" | sed -E 's/.*:\s+//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                            service=$(echo "$trimmed" | sed -E 's/:\s+[^:]+$//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        fi
+                    else
+                        # 回退到原来的简单分割逻辑
+                        local service=$(echo "$trimmed" | cut -d':' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        local status=$(echo "$trimmed" | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                    fi
                     
                     # 直接使用原始状态，不做转换
                     results="${results}${service}|${status}\n"
