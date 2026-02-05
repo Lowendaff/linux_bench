@@ -2066,10 +2066,10 @@ ${stream_output_v6}"
                 fi
                 
                 # 匹配测试结果行（含Tab或多个空格和冒号）
-                # 排除: 脚本信息行、jq 错误输出
+                # 排除: 脚本信息行、jq 错误输出、parse error 解析错误
                 if echo "$line" | grep -qE '^\s*[A-Za-z0-9+() -]+:\s+' && \
                    ! echo "$line" | grep -qE '脚本适配|您的网络|测试时间|版本|运行次数|t\.me|github|网站|详情' && \
-                   ! echo "$line" | grep -qE '^\s*jq\s*:'; then
+                   ! echo "$line" | grep -qiE '^\s*(jq\s*:|parse error|Invalid)'; then
                     # 解析服务名称和状态
                     local service=$(echo "$line" | sed 's/^\s*//' | cut -d':' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                     local status=$(echo "$line" | sed 's/^\s*//' | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -2137,6 +2137,8 @@ ${stream_output_v6}"
                 if [ -n "$service" ]; then
                     # 跳过分类标题
                     if [[ "$service" != CATEGORY:* ]] && [[ "$service" != SUBCATEGORY:* ]]; then
+                        # 跳过 Microsoft Copilot
+                        [[ "$service" == *"Microsoft Copilot"* ]] && continue
                         echo "| $service | $status |"
                     fi
                 fi
