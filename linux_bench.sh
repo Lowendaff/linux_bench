@@ -83,6 +83,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=true
             RUN_PUBLIC=false
             RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="network"
             shift
             ;;
@@ -96,6 +97,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=false
             RUN_PUBLIC=false
             RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="hardware"
             shift
             ;;
@@ -109,6 +111,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=false
             RUN_PUBLIC=false
             RUN_TRACE=true
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="trace"
             shift
             ;;
@@ -122,6 +125,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=false
             RUN_PUBLIC=false
             RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="ip"
             shift
             ;;
@@ -135,6 +139,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=false
             RUN_PUBLIC=false
             RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="service"
             shift
             ;;
@@ -148,6 +153,7 @@ for arg in "$@"; do
             RUN_SPEEDTEST=false
             RUN_PUBLIC=true
             RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
             REPORT_PREFIX="public"
             shift
             ;;
@@ -163,6 +169,20 @@ for arg in "$@"; do
             RUN_TRACE=false
             RUN_FORWARD_TRACE=true
             REPORT_PREFIX="forward"
+            shift
+            ;;
+        --speedtest)
+            RUN_NET_INFO=true
+            RUN_BGP=false
+            RUN_IP_QUALITY=false
+            RUN_STREAM=false
+            RUN_CPU=false
+            RUN_DISK=false
+            RUN_SPEEDTEST=true
+            RUN_PUBLIC=false
+            RUN_TRACE=false
+            RUN_FORWARD_TRACE=false
+            REPORT_PREFIX="speedtest"
             shift
             ;;
         -4)
@@ -414,6 +434,7 @@ ensure_dependencies() {
     fi
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         ! check_cmd cloudflare-speed-cli && need_cfspeed=true && ephemeral_tools="$ephemeral_tools cf-speed"
+        need_inetspeed=true && ephemeral_tools="$ephemeral_tools inetspeed"
     fi
     if [ "$RUN_CPU" = "true" ]; then
         need_gb6=true && ephemeral_tools="$ephemeral_tools geekbench6"
@@ -531,6 +552,40 @@ ensure_dependencies() {
         fi
     else
         export CFSPEED_BIN="false"
+    fi
+
+    # 实际下载 - iNetSpeed-CLI (Apple CDN Speedtest)
+    if [ "$RUN_SPEEDTEST" = "true" ]; then
+        if [ "$need_inetspeed" = "true" ]; then
+            local arch=$(uname -m)
+            local inetspeed_url=""
+            case "$arch" in
+                x86_64)
+                    inetspeed_url="https://github.com/tsosunchia/iNetSpeed-CLI/releases/download/v1.0.9/speedtest-linux-amd64"
+                    ;;
+                aarch64)
+                    inetspeed_url="https://github.com/tsosunchia/iNetSpeed-CLI/releases/download/v1.0.9/speedtest-linux-arm64"
+                    ;;
+                *)
+                    warn "  └─ 不支持的架构: $arch，跳过 iNetSpeed"
+                    export INETSPEED_BIN="false"
+                    ;;
+            esac
+            
+            if [ -n "$inetspeed_url" ]; then
+                echo -n "  ├─ 正在下载 inetspeed (Apple CDN)..."
+                if retry_download "$TMP_DIR/inetspeed" "$inetspeed_url" "inetspeed"; then
+                    chmod +x "$TMP_DIR/inetspeed"
+                    export INETSPEED_BIN="$TMP_DIR/inetspeed"
+                    echo -e " ${GREEN}完成${NC}"
+                else
+                    export INETSPEED_BIN="false"
+                    echo -e " ${RED}失败${NC}"
+                fi
+            fi
+        fi
+    else
+        export INETSPEED_BIN="false"
     fi
 
     # 实际下载 - Geekbench 6 (有进度提示)
@@ -1749,6 +1804,97 @@ run_cloudflare_speedtest() {
     rm -rf "$HOME/.local/share/cloudflare-speed-cli" 2>/dev/null
     
     info "  └─ Cloudflare Speedtest 完成"
+}
+
+run_apple_speedtest() {
+    log "开始 Apple CDN Speedtest..."
+    
+    if [ "$INETSPEED_BIN" == "false" ] || [ -z "$INETSPEED_BIN" ]; then
+        warn "  └─ iNetSpeed-CLI 未安装或下载失败，跳过"
+        return
+    fi
+    
+    if [ ! -x "$INETSPEED_BIN" ] && ! command -v "$INETSPEED_BIN" >/dev/null 2>&1; then
+        warn "  └─ iNetSpeed-CLI ($INETSPEED_BIN) 不可执行，跳过"
+        return
+    fi
+    
+    echo "  ├─ 正在测试 Apple CDN 速度..."
+    
+    # 非 TTY 模式下自动选择第一个节点，用 echo "" 发送回车确认
+    local raw_output
+    raw_output=$(echo "" | "$INETSPEED_BIN" 2>&1)
+    
+    if [ -z "$raw_output" ]; then
+        warn "  └─ Apple CDN Speedtest 失败: 无输出"
+        return
+    fi
+    
+    # 清理 ANSI 转义序列
+    local clean_output
+    clean_output=$(echo "$raw_output" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/\r//g')
+    
+    # 解析节点信息
+    local endpoint=$(echo "$clean_output" | grep -oP 'Selected endpoint: \K[0-9.]+' | head -n1)
+    local endpoint_loc=$(echo "$clean_output" | grep -oP 'Selected endpoint: [0-9.]+ \(\K[^)]+' | head -n1)
+    [ -z "$endpoint" ] && endpoint=$(echo "$clean_output" | grep -oP 'Host: \K\S+' | head -n1)
+    
+    # 解析空闲延迟 (header 和数据行之间隔了 [+] Samples: 行，需要 -A3)
+    local idle_line=$(echo "$clean_output" | grep -A3 'Idle Latency' | grep -- '->' | head -n1)
+    local idle_latency=$(echo "$idle_line" | grep -oP '[0-9.]+ ms median' | grep -oP '[0-9.]+' | head -n1)
+    local idle_jitter=$(echo "$idle_line" | grep -oP 'jitter [0-9.]+ ms' | grep -oP '[0-9.]+' | head -n1)
+    local idle_min=$(echo "$idle_line" | grep -oP 'min [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
+    local idle_avg=$(echo "$idle_line" | grep -oP 'avg [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
+    local idle_max=$(echo "$idle_line" | grep -oP 'max [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
+    
+    # 解析速度 - 匹配 "-> NNN Mbps" 汇总行（非 TTY 模式箭头是 -> 不是 ➜）
+    # 下载单线程
+    local dl_single=$(echo "$clean_output" | sed -n '/Download (single/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
+    local dl_single_loaded=$(echo "$clean_output" | sed -n '/Download (single/,/Download (multi/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
+    
+    # 下载多线程
+    local dl_multi=$(echo "$clean_output" | sed -n '/Download (multi/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
+    local dl_multi_loaded=$(echo "$clean_output" | sed -n '/Download (multi/,/Upload (single/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
+    
+    # 上传单线程
+    local ul_single=$(echo "$clean_output" | sed -n '/Upload (single/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
+    local ul_single_loaded=$(echo "$clean_output" | sed -n '/Upload (single/,/Upload (multi/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
+    
+    # 上传多线程
+    local ul_multi=$(echo "$clean_output" | sed -n '/Upload (multi/,/Summary/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
+    local ul_multi_loaded=$(echo "$clean_output" | sed -n '/Upload (multi/,/Summary/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
+    
+    # 解析数据用量
+    local data_used=$(echo "$clean_output" | grep -oP 'Data Used:\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
+    
+    # 控制台输出
+    echo "  │  ├─ 节点: ${endpoint:-N/A} (${endpoint_loc:-N/A})"
+    echo "  │  ├─ 下载: ${dl_single:-N/A} (单线程) / ${dl_multi:-N/A} (多线程)"
+    echo "  │  ├─ 上传: ${ul_single:-N/A} (单线程) / ${ul_multi:-N/A} (多线程)"
+    echo "  │  └─ 延迟: ${idle_latency:-N/A} ms (抖动: ${idle_jitter:-N/A} ms)"
+    
+    # === 写入报告 ===
+    {
+        echo "## Apple CDN Speedtest"
+        echo "测试节点: ${endpoint:-N/A} (${endpoint_loc:-N/A})"
+        echo ""
+        echo "### 速度测试"
+        echo "| 方向 | 单线程 | 多线程 | 负载延迟 (单) | 负载延迟 (多) |"
+        echo "|:---|---:|---:|---:|---:|"
+        echo "| 下载 | ${dl_single:-N/A} | ${dl_multi:-N/A} | ${dl_single_loaded:-N/A} | ${dl_multi_loaded:-N/A} |"
+        echo "| 上传 | ${ul_single:-N/A} | ${ul_multi:-N/A} | ${ul_single_loaded:-N/A} | ${ul_multi_loaded:-N/A} |"
+        echo ""
+        echo "### 延迟测试"
+        echo "| 指标 | 值 |"
+        echo "|:---|---:|"
+        echo "| 空闲延迟 (中位数) | ${idle_latency:-N/A} ms |"
+        echo "| 空闲延迟 (最小/平均/最大) | ${idle_min:-N/A} / ${idle_avg:-N/A} / ${idle_max:-N/A} ms |"
+        echo "| 空闲抖动 | ${idle_jitter:-N/A} ms |"
+        echo "| 数据用量 | ${data_used:-N/A} |"
+        echo ""
+    } >> "$REPORT_FILE"
+    
+    info "  └─ Apple CDN Speedtest 完成"
 }
 
 # =========================
@@ -3015,6 +3161,7 @@ EOF
     echo -e "  -i, --ip-quality    IP 质量检测 (包含: IP欺诈值、风险评分、流媒体解锁详情)"
     echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测)"
     echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
+    echo -e "      --speedtest      速度测试 (包含: iperf3 带宽测试、Cloudflare 测速、Apple CDN 测速)"
     echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
     
     # 致谢
@@ -3022,6 +3169,7 @@ EOF
     echo -e "[+] 由我（神秘人）驾驶着 Google Antigravity 进行改写和扩展"
     echo -e "[>] 本项目依赖 Geekbench 6 进行 CPU 性能测试"
     echo -e "[>] 本项目依赖 kavehtehrani/cloudflare-speed-cli 进行网络测速"
+    echo -e "[>] 本项目依赖 tsosunchia/iNetSpeed-CLI 进行 Apple CDN 测速"
     echo -e "[>] 本项目依赖 1-stream/RegionRestrictionCheck 进行服务解锁测试"
     echo -e "[>] 本项目依赖 nxtrace/NTrace-core 进行路由追踪"
     echo -e "[i] IP 信息来源于 ipapi.co，ipapi.is，ippure.com 和 PeeringDB"
@@ -3038,8 +3186,10 @@ EOF
     # Mode Log
     if [ "$RUN_PUBLIC" = "true" ]; then 
         log "${CYAN}模式: 仅公共服务测试 (-p)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ]; then 
+    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ] && [ "$RUN_STREAM" = "true" ]; then 
         log "${CYAN}模式: 综合网络测试 (-n)${NC}"
+    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_STREAM" = "false" ]; then 
+        log "${CYAN}模式: 速度测试 (--speedtest)${NC}"
     elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: 硬件性能测试 (-h)${NC}"
     elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
@@ -3098,6 +3248,7 @@ EOF
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         run_iperf_test
         run_cloudflare_speedtest
+        run_apple_speedtest
     fi
     
     # 公共服务测试（只测公共服务，不测其他目标）
