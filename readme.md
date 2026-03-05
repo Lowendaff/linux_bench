@@ -20,7 +20,7 @@
 * **依赖组件**（脚本自动管理）：
 * **系统工具**：`curl`, `jq`
 * **性能测试**：`sysbench` (CPU), `fio` (磁盘), `geekbench6` (基准跑分)
-* **网络工具**：`iperf3` (带宽), `nexttrace` (路由追踪), `cloudflare-speed-cli` (Cloudflare测速), `yt-dlp` (动态YouTube CDN检测)
+* **网络工具**：`iperf3` (带宽), `nexttrace` (路由追踪), `cloudflare-speed-cli` (Cloudflare 测速), `iNetSpeed-CLI` (Apple CDN 测速), `yt-dlp` (动态 YouTube CDN 检测)
 
 
 
@@ -106,6 +106,12 @@ bash <(curl -L -s bench.lowendaff.com)
   sudo ./linux_bench.sh -s
   ```
 
+* **速度测试** (`--speedtest`)
+  * 包含: iperf3 带宽测试、Cloudflare CDN 测速、Apple CDN 测速
+  ```bash
+  sudo ./linux_bench.sh --speedtest
+  ```
+
 * **强制 IP 版本** (`-4`, `-6`)
   * 强制仅使用 IPv4 或 IPv6 协议
   ```bash
@@ -171,6 +177,7 @@ bash <(curl -L -s bench.lowendaff.com)
 * **[Geekbench 6 - Cross-Platform Benchmark](https://www.geekbench.com/)**: Geekbench 6 is a cross-platform benchmark that measures your system's performance with the press of a button
 * **[sysbench](https://github.com/akopytov/sysbench)** : Scriptable database and system performance benchmark
 * **[cloudflare-speed-cli](https://github.com/kavehtehrani/cloudflare-speed-cli)** : CLI for internet speed test via cloudflare
+* **[iNetSpeed-CLI](https://github.com/tsosunchia/iNetSpeed-CLI)** : Apple CDN speed test CLI tool
 * **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** : A feature-rich command-line audio/video downloader
 * **IP 数据来源**: ipapi.co, ipapi.is, ippure.com, PeeringDB
 
