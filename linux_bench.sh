@@ -1216,56 +1216,6 @@ collect_ip_quality() {
         echo "| 滥用黑名单 | $(format_bool_yesno "$ipapi_is_abuser") | | ipapi.is |"
         # 其他
         echo "| 保留 IP | $(format_bool_yesno "$ipapi_is_bogon") | | ipapi.is |"
-        
-        # === 综合评价 ===
-        local summary="" summary_icon=""
-        local fraud_score_num=${ippure_fraud_score:-100}
-        
-        # 评价逻辑 (ippure 原生识别优先级高于 ipapi.is 机房识别)
-        if [ "$ipapi_is_tor" = "true" ]; then
-            summary_icon="🔴"
-            summary="Tor 节点，高风险"
-        elif [ "$ipapi_is_abuser" = "true" ]; then
-            summary_icon="🔴"
-            summary="在滥用黑名单中"
-        elif [ "$fraud_score_num" -ge 70 ]; then
-            summary_icon="🔴"
-            summary="欺诈评分过高"
-        elif [ "$ippure_is_residential" = "true" ] && [ "$vpn_proxy_result" = "false" ]; then
-            # ippure 判定原生优先，即使 ipapi.is 显示机房也信任 ippure
-            if [ "$fraud_score_num" -lt 40 ]; then
-                summary_icon="🟢"
-                summary="优质原生 IP"
-            else
-                summary_icon="🟡"
-                summary="原生家宽 IP，欺诈评分中等"
-            fi
-        elif [ "$ippure_is_residential" = "true" ] && [ "$vpn_proxy_result" = "true" ]; then
-            # 原生但有代理标记
-            summary_icon="🟠"
-            summary="原生 IP，但检测到代理"
-        elif [ "$ipapi_is_datacenter" = "true" ] && [ "$vpn_proxy_result" = "true" ]; then
-            summary_icon="🟠"
-            summary="机房 IP，有 VPN/代理标记"
-        elif [ "$ipapi_is_datacenter" = "true" ]; then
-            summary_icon="🟡"
-            summary="机房 IP"
-        elif [ "$vpn_proxy_result" = "true" ]; then
-            summary_icon="🟠"
-            summary="检测到 VPN/代理"
-        elif [ "$ipapi_is_mobile" = "true" ]; then
-            summary_icon="🟡"
-            summary="移动网络 IP"
-        elif [ "$ipapi_is_satellite" = "true" ]; then
-            summary_icon="🟡"
-            summary="卫星网络 IP"
-        else
-            summary_icon="🟢"
-            summary="正常 IP"
-        fi
-        
-        echo ""
-        echo "IP 质量评价（由机器生成，仅供参考）：$summary_icon $summary"
 
     } >> "$REPORT_FILE"
     
