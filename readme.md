@@ -18,7 +18,7 @@
 * **辅助工具**：Python 3.12 (用于数据抓取与处理)
 * **CI/CD**：GitHub Actions (用于自动化定时任务)
 * **依赖组件**（脚本自动管理）：
-* **系统工具**：`curl`, `jq`
+* **系统工具**：`curl`, `jq`, `tar`, `xz-utils`
 * **性能测试**：`sysbench` (CPU), `fio` (磁盘), `geekbench6` (基准跑分)
 * **网络工具**：`iperf3` (带宽), `nexttrace` (路由追踪), `cloudflare-speed-cli` (Cloudflare 测速), `iNetSpeed-CLI` (Apple CDN 测速), `yt-dlp` (动态 YouTube CDN 检测)
 
@@ -128,6 +128,19 @@ bash <(curl -L -s bench.lowendaff.com)
   ```bash
   sudo ./linux_bench.sh -n -4  # 仅 IPv4 网络测试
   sudo ./linux_bench.sh -s -6  # 仅 IPv6 解锁测试
+  ```
+
+* **修复 DNS** (`--fix-dns`)
+  * 强制覆盖系统 DNS（测试期间临时使用公共 DNS 解决部分节点网络查询超时的问题）
+  ```bash
+  sudo ./linux_bench.sh --fix-dns
+  ```
+
+* **数据输出格式** (`--raw`, `--normalize`)
+  * `--raw`：默认输出原始未标准化的数据
+  * `--normalize`：对输出进行数据标准化处理（如地名去后缀、运营商名称统一）
+  ```bash
+  sudo ./linux_bench.sh -n --normalize
   ```
 
 ## 📂 核心功能与目录结构
