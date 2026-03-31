@@ -776,15 +776,39 @@ collect_network_info() {
             local api_url="${v4_apis[$i]}"
             local api_name="${v4_api_names[$i]}"
             
-            v4_json=$(curl -s -4 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
-            if [ -n "$v4_json" ] && echo "$v4_json" | jq -e '.ip' >/dev/null 2>&1; then
+            local retry_delays=(5 10 30)
+            local max_retries=3
+            local attempt=0
+            local current_api_success=false
+            
+            while [ $attempt -le $max_retries ]; do
+                if [ $attempt -eq 0 ]; then
+                    v4_json=$(curl -s -4 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
+                    if [ -n "$v4_json" ] && echo "$v4_json" | jq -e '.ip' >/dev/null 2>&1; then
+                        current_api_success=true
+                        break
+                    fi
+                else
+                    local delay=${retry_delays[$((attempt-1))]}
+                    echo -e "  │  ├─ IPv4 查询 ($api_name) 失败，${YELLOW}重试 ($attempt/$max_retries, ${delay}秒后)${NC}"
+                    sleep $delay
+                    v4_json=$(curl -s -4 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
+                    if [ -n "$v4_json" ] && echo "$v4_json" | jq -e '.ip' >/dev/null 2>&1; then
+                        current_api_success=true
+                        break
+                    fi
+                fi
+                attempt=$((attempt+1))
+            done
+            
+            if [ "$current_api_success" = "true" ]; then
                 v4_source="$api_name"
                 v4_success=true
                 break
             fi
             
             if [ $i -lt $((${#v4_apis[@]} - 1)) ]; then
-                echo "  │  ├─ IPv4 查询失败 ($api_name)，尝试备用源..."
+                echo "  │  ├─ IPv4 检测失效 ($api_name)，尝试备用源..."
             fi
         done
         
@@ -856,15 +880,39 @@ collect_network_info() {
             local api_url="${v6_apis[$i]}"
             local api_name="${v6_api_names[$i]}"
             
-            v6_json=$(curl -s -6 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
-            if [ -n "$v6_json" ] && echo "$v6_json" | jq -e '.ip' >/dev/null 2>&1; then
+            local retry_delays=(5 10 30)
+            local max_retries=3
+            local attempt=0
+            local current_api_success=false
+            
+            while [ $attempt -le $max_retries ]; do
+                if [ $attempt -eq 0 ]; then
+                    v6_json=$(curl -s -6 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
+                    if [ -n "$v6_json" ] && echo "$v6_json" | jq -e '.ip' >/dev/null 2>&1; then
+                        current_api_success=true
+                        break
+                    fi
+                else
+                    local delay=${retry_delays[$((attempt-1))]}
+                    echo -e "  │  ├─ IPv6 查询 ($api_name) 失败，${YELLOW}重试 ($attempt/$max_retries, ${delay}秒后)${NC}"
+                    sleep $delay
+                    v6_json=$(curl -s -6 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
+                    if [ -n "$v6_json" ] && echo "$v6_json" | jq -e '.ip' >/dev/null 2>&1; then
+                        current_api_success=true
+                        break
+                    fi
+                fi
+                attempt=$((attempt+1))
+            done
+            
+            if [ "$current_api_success" = "true" ]; then
                 v6_source="$api_name"
                 v6_success=true
                 break
             fi
             
             if [ $i -lt $((${#v6_apis[@]} - 1)) ]; then
-                echo "  │  ├─ IPv6 查询失败 ($api_name)，尝试备用源..."
+                echo "  │  ├─ IPv6 检测失效 ($api_name)，尝试备用源..."
             fi
         done
         
