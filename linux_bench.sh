@@ -67,6 +67,7 @@ SKIP_V6=false
 NORMALIZE_OUTPUT=false  # 是否进行数据标准化（地名去后缀、运营商名统一）
 RAW_OUTPUT=true  # 默认输出原始未标准化的数据
 SKIP_GB=false    # 是否跳过 Geekbench 6 测试
+FIX_DNS=false    # 是否强制覆盖 DNS
 
 # 报告名称前缀 (根据参数动态设置)
 REPORT_PREFIX="report"
@@ -207,6 +208,10 @@ for arg in "$@"; do
             SKIP_GB=true
             shift
             ;;
+        --fix-dns)
+            FIX_DNS=true
+            shift
+            ;;
     esac
 done
 
@@ -230,6 +235,12 @@ cleanup() {
     local swap_file="$TMP_DIR/gb6_swapfile"
     if [ -f "$swap_file" ]; then
         swapoff "$swap_file" 2>/dev/null || true
+    fi
+    
+    # 0.5 恢复 DNS
+    if [ "$FIX_DNS" = "true" ] && [ -f "$TMP_DIR/resolv.conf.bak" ]; then
+        echo "  ├─ 恢复系统 DNS 配置..."
+        cat "$TMP_DIR/resolv.conf.bak" > /etc/resolv.conf 2>/dev/null || true
     fi
     
     # 1. 删除临时文件
@@ -3166,6 +3177,7 @@ EOF
     echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
     echo -e "      --speedtest      速度测试 (包含: iperf3 带宽测试、Cloudflare 测速、Apple CDN 测速)"
     echo -e "      --skip-gb        跳过 Geekbench 6 性能测试"
+    echo -e "      --fix-dns        强制覆盖系统 DNS（测试期间使用公共 DNS 解决网络查询超时问题）"
     echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
     
     # 致谢
@@ -3214,6 +3226,15 @@ EOF
         log "${CYAN}限制: 仅运行 IPv6 测试 (-6)${NC}"
     fi
     
+    if [ "$FIX_DNS" = "true" ]; then
+        mkdir -p "$TMP_DIR"
+        if [ -f /etc/resolv.conf ]; then
+            cp -L /etc/resolv.conf "$TMP_DIR/resolv.conf.bak" 2>/dev/null || true
+        fi
+        echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 2606:4700:4700::1111" > /etc/resolv.conf 2>/dev/null || true
+        log "${YELLOW}应用: 强制临时覆盖系统 DNS (--fix-dns)${NC}"
+    fi
+
     ensure_dependencies
     
     collect_system_info
