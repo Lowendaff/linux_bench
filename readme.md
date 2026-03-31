@@ -60,6 +60,11 @@ bash <(curl -L -s bench.lowendaff.com)
 
 启动后将显示 ASCII 欢迎界面，并提示相关说明。
 
+> 💡 **提示**: 默认测试中的 Geekbench (GB) 跑分环节耗时较长。如果需要执行除 GB 外的完整测试，可以使用如下命令：
+> ```bash
+> bash <(curl -L -s bench.lowendaff.com) --skip-gb
+> ```
+
 ### 2. 指定模式运行
 
 跳过交互菜单，直接运行特定模块：
@@ -110,6 +115,12 @@ bash <(curl -L -s bench.lowendaff.com)
   * 包含: iperf3 带宽测试、Cloudflare CDN 测速、Apple CDN 测速
   ```bash
   sudo ./linux_bench.sh --speedtest
+  ```
+
+* **跳过 Geekbench 测试** (`--skip-gb`)
+  * 跳过耗时较长的 Geekbench 6 跑分（适用于全能模式或配合 `-h` 硬件测试使用）
+  ```bash
+  sudo ./linux_bench.sh --skip-gb
   ```
 
 * **强制 IP 版本** (`-4`, `-6`)

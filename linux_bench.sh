@@ -66,6 +66,7 @@ SKIP_V4=false
 SKIP_V6=false
 NORMALIZE_OUTPUT=false  # 是否进行数据标准化（地名去后缀、运营商名统一）
 RAW_OUTPUT=true  # 默认输出原始未标准化的数据
+SKIP_GB=false    # 是否跳过 Geekbench 6 测试
 
 # 报告名称前缀 (根据参数动态设置)
 REPORT_PREFIX="report"
@@ -200,6 +201,10 @@ for arg in "$@"; do
             ;;
         --normalize)
             NORMALIZE_OUTPUT=true
+            shift
+            ;;
+        --skip-gb)
+            SKIP_GB=true
             shift
             ;;
     esac
@@ -436,7 +441,7 @@ ensure_dependencies() {
         ! check_cmd cloudflare-speed-cli && need_cfspeed=true && ephemeral_tools="$ephemeral_tools cf-speed"
         need_inetspeed=true && ephemeral_tools="$ephemeral_tools inetspeed"
     fi
-    if [ "$RUN_CPU" = "true" ]; then
+    if [ "$RUN_CPU" = "true" ] && [ "$SKIP_GB" = "false" ]; then
         need_gb6=true && ephemeral_tools="$ephemeral_tools geekbench6"
     fi
     
@@ -3112,6 +3117,7 @@ EOF
     echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测)"
     echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
     echo -e "      --speedtest      速度测试 (包含: iperf3 带宽测试、Cloudflare 测速、Apple CDN 测速)"
+    echo -e "      --skip-gb        跳过 Geekbench 6 性能测试"
     echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
     
     # 致谢
@@ -3187,7 +3193,9 @@ EOF
     # 硬件性能测试
     if [ "$RUN_CPU" = "true" ]; then
         run_cpu_test
-        run_gb6_test
+        if [ "$SKIP_GB" = "false" ]; then
+            run_gb6_test
+        fi
     fi
     
     if [ "$RUN_DISK" = "true" ]; then
