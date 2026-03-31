@@ -594,7 +594,7 @@ ensure_dependencies() {
     fi
 
     # 实际下载 - Geekbench 6 (有进度提示)
-    if [ "$RUN_CPU" = "true" ]; then
+    if [ "$RUN_CPU" = "true" ] && [ "$SKIP_GB" = "false" ]; then
         local arch=$(uname -m)
         local gb6_version="6.5.0"
         local gb6_url_primary=""
