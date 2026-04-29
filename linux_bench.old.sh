@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2026  Linux Bench
-#
+# 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
@@ -236,16 +236,16 @@ cleanup() {
     if [ -f "$swap_file" ]; then
         swapoff "$swap_file" 2>/dev/null || true
     fi
-
+    
     # 0.5 恢复 DNS
     if [ "$FIX_DNS" = "true" ] && [ -f "$TMP_DIR/resolv.conf.bak" ]; then
         echo "  ├─ 恢复系统 DNS 配置..."
         cat "$TMP_DIR/resolv.conf.bak" > /etc/resolv.conf 2>/dev/null || true
     fi
-
+    
     # 1. 删除临时文件
     rm -rf "$TMP_DIR" 2>/dev/null || true
-
+    
     # 2. 移除脚本安装的依赖 (只清理新安装的)
     if [ "${#CLEANUP_PKGS[@]}" -gt 0 ] 2>/dev/null; then
         echo ""
@@ -268,13 +268,13 @@ cleanup() {
 interrupt_handler() {
     echo ""
     echo -e "${YELLOW}[中断] 检测到 Ctrl+C，测试未完成${NC}"
-
+    
     # 检查报告文件是否存在
     if [ -f "$REPORT_FILE" ]; then
         echo -e "${YELLOW}是否保留已生成的测试结果？${NC}"
         echo -n "输入 y 保留，直接回车删除 (默认: 删除): "
         read -r keep_result </dev/tty 2>/dev/null || keep_result=""
-
+        
         if [ "$keep_result" = "y" ] || [ "$keep_result" = "Y" ] || [ "$keep_result" = "yes" ]; then
             echo -e "${GREEN}[保留] 测试结果已保存到: $REPORT_FILE${NC}"
         else
@@ -282,7 +282,7 @@ interrupt_handler() {
             echo -e "${YELLOW}[删除] 测试结果已删除${NC}"
         fi
     fi
-
+    
     cleanup
     echo -e "\n[退出] 脚本已终止"
     exit 1
@@ -330,11 +330,11 @@ retry_download() {
     local url="$2"
     local name="${3:-文件}"
     local extra_args="$4"
-
+    
     local retry_delays=(5 10 30)
     local max_retries=3
     local attempt=0
-
+    
     while [ $attempt -le $max_retries ]; do
         if [ $attempt -eq 0 ]; then
             # 第一次尝试
@@ -353,7 +353,7 @@ retry_download() {
         fi
         attempt=$((attempt + 1))
     done
-
+    
     return 1
 }
 
@@ -362,18 +362,18 @@ retry_download() {
 # =========================
 ensure_dependencies() {
     log "正在检查依赖..."
-
+    
     local target_pkgs="curl jq tar xz-utils"
-
+    
     # 根据 Flag 添加依赖
     if [ "$RUN_CPU" = "true" ] || [ "$RUN_DISK" = "true" ]; then
         target_pkgs="$target_pkgs sysbench fio"
     fi
-
+    
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         target_pkgs="$target_pkgs iperf3"
     fi
-
+    
     local missing_pkgs=""
     local installed_pkgs=""
 
@@ -385,18 +385,18 @@ ensure_dependencies() {
             missing_pkgs="$missing_pkgs $pkg"
         fi
     done
-
+    
     # 显示已安装的依赖
     if [ -n "$installed_pkgs" ]; then
         echo "  ├─ 已安装:$installed_pkgs"
     fi
-
+    
     # 2. 安装缺失的包
     if [ -n "$missing_pkgs" ]; then
         echo "  ├─ 需安装:$missing_pkgs"
-
+        
         export DEBIAN_FRONTEND=noninteractive
-
+        
         # 更新软件源
         echo -n "  │  ├─ 更新软件源..."
         if ! apt-get update -y -q >/dev/null 2>&1; then
@@ -405,7 +405,7 @@ ensure_dependencies() {
             exit 1
         fi
         echo -e " ${GREEN}完成${NC}"
-
+        
         # 安装依赖包
         echo -n "  │  └─ 安装依赖包..."
         if apt-get install -y -q $missing_pkgs >/dev/null 2>&1; then
@@ -429,14 +429,14 @@ ensure_dependencies() {
         fi
     done
     [ "$verify_fail" = "true" ] && exit 1
-
+    
     # 4. Ephemeral Binaries (NextTrace, yt-dlp, Geekbench6, cf-speed)
     # Ensure TMP_DIR exists for all modes (used by fio, logs, etc)
     mkdir -p "$TMP_DIR"
-
+    
     # 预判需要下载的临时工具
     local ephemeral_tools=""
-
+    
     if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         ephemeral_tools="$ephemeral_tools nexttrace"
     fi
@@ -449,17 +449,17 @@ ensure_dependencies() {
     if [ "$RUN_CPU" = "true" ] && [ "$SKIP_GB" = "false" ]; then
         ephemeral_tools="$ephemeral_tools geekbench6"
     fi
-
+    
     # 输出临时工具列表
     [ -n "$ephemeral_tools" ] && info "下载临时工具:$ephemeral_tools"
-
+    
     # 实际下载 - NextTrace (回程/公共服务/去程追踪都需要)
     if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         local arch=$(uname -m)
         local url=""
         [ "$arch" == "x86_64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_amd64"
         [ "$arch" == "aarch64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_arm64"
-
+        
         echo -n "  ├─ 正在下载 nexttrace..."
         if [ -n "$url" ] && retry_download "$TMP_DIR/nexttrace" "$url" "nexttrace"; then
             chmod +x "$TMP_DIR/nexttrace"
@@ -474,7 +474,7 @@ ensure_dependencies() {
     else
         export NEXTTRACE_BIN="false"
     fi
-
+    
     # 实际下载 - yt-dlp (仅回程/公共服务追踪需要，用于获取 YouTube CDN)
     if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
         echo -n "  ├─ 正在下载 yt-dlp..."
@@ -489,13 +489,13 @@ ensure_dependencies() {
     else
         export YTDLP_BIN="false"
     fi
-
+    
     # 实际下载 - Cloudflare Speedtest CLI
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         local arch=$(uname -m)
         local cf_url_primary=""
         local cf_url_fallback=""
-
+        
         case "$arch" in
             x86_64)
                 cf_url_primary="https://file.lowendaff.com/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
@@ -510,11 +510,11 @@ ensure_dependencies() {
                 export CFSPEED_BIN="false"
                 ;;
         esac
-
+        
         if [ -n "$cf_url_primary" ]; then
             local cf_tarball="$TMP_DIR/cloudflare-speed-cli.tar.xz"
             echo -n "  ├─ 正在下载 cf-speed..."
-
+            
             local download_success=false
             # 先尝试主源（带重试）
             if retry_download "$cf_tarball" "$cf_url_primary" "cf-speed"; then
@@ -526,7 +526,7 @@ ensure_dependencies() {
                     download_success=true
                 fi
             fi
-
+            
             if [ "$download_success" = "true" ]; then
                 if tar -xJf "$cf_tarball" -C "$TMP_DIR" 2>/dev/null; then
                     local cf_bin=$(find "$TMP_DIR" -name "cloudflare-speed-cli" -type f 2>/dev/null | head -n1)
@@ -568,7 +568,7 @@ ensure_dependencies() {
                 export INETSPEED_BIN="false"
                 ;;
         esac
-
+        
         if [ -n "$inetspeed_url" ]; then
             echo -n "  ├─ 正在下载 inetspeed (Apple CDN)..."
             if retry_download "$TMP_DIR/inetspeed" "$inetspeed_url" "inetspeed"; then
@@ -590,7 +590,7 @@ ensure_dependencies() {
         local gb6_version="6.5.0"
         local gb6_url_primary=""
         local gb6_url_fallback=""
-
+        
         case "$arch" in
             x86_64)
                 gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-Linux.tar.gz"
@@ -605,11 +605,11 @@ ensure_dependencies() {
                 export GB6_BIN="false"
                 ;;
         esac
-
+        
         if [ -n "$gb6_url_primary" ]; then
             local gb6_tarball="$TMP_DIR/geekbench6.tar.gz"
             echo -n "  ├─ 正在下载 Geekbench 6..."
-
+            
             local download_success=false
             # 先尝试主源（带重试）
             if retry_download "$gb6_tarball" "$gb6_url_primary" "Geekbench 6"; then
@@ -621,7 +621,7 @@ ensure_dependencies() {
                     download_success=true
                 fi
             fi
-
+            
             if [ "$download_success" = "true" ]; then
                 if tar -xzf "$gb6_tarball" -C "$TMP_DIR" 2>/dev/null; then
                     local gb6_bin=$(find "$TMP_DIR" -name "geekbench6" -type f 2>/dev/null | head -n1)
@@ -658,7 +658,7 @@ ensure_dependencies() {
 # =========================
 collect_system_info() {
     log "开始系统信息收集..."
-
+    
     # 1. CPU
     echo "  ├─ 检测 CPU 信息..."
     if check_cmd lscpu; then
@@ -679,7 +679,7 @@ collect_system_info() {
     fi
     [ -z "$SYS_CPU" ] && SYS_CPU="Unknown"
     echo "  │  └─ CPU: $SYS_CPU ($SYS_CORES vCPU)"
-
+    
     # 2. Virtualization
     echo "  ├─ 检测虚拟化类型..."
     SYS_VIRT=$(systemd-detect-virt 2>/dev/null)
@@ -688,7 +688,7 @@ collect_system_info() {
     fi
     [ -z "$SYS_VIRT" ] && SYS_VIRT="Physical/Unknown"
     echo "  │  └─ 虚拟化: $SYS_VIRT"
-
+    
     # 3. RAM / SWAP
     echo "  ├─ 检测内存信息..."
     if check_cmd free; then
@@ -707,7 +707,7 @@ collect_system_info() {
         SYS_SWAP="Unknown"
     fi
     echo "  │  └─ 内存: $SYS_MEM"
-
+    
     # 4. Disk
     echo "  ├─ 检测磁盘信息..."
     local root_disk=$(df -h / | tail -n1)
@@ -716,12 +716,12 @@ collect_system_info() {
     local disk_dev=$(echo "$root_disk" | awk '{print $1}')
     SYS_DISK="${disk_used} / ${disk_total} ($disk_dev)"
     echo "  │  └─ 磁盘: $SYS_DISK"
-
+    
     # 5. OS / Kernel（使用脚本开头已加载的 /etc/os-release 变量）
     SYS_OS="${PRETTY_NAME:-$(uname -srm)}"
     SYS_KERNEL=$(uname -r)
     echo "  └─ 系统: $SYS_OS ($SYS_KERNEL)"
-
+    
     # === Streaming Report ===
     {
         echo "## 系统信息"
@@ -745,16 +745,16 @@ collect_system_info() {
 # =========================
 collect_network_info() {
     log "开始网络信息收集..."
-
+    
     # 使用 ipapi.co，它同时支持 IPv4 和 IPv6 访问
     # 字段映射：ip=IP地址, org=组织, asn=AS号, city=城市, country_code=国家代码
-
+    
     if [ "$SKIP_V4" = "false" ]; then
         echo "  ├─ 查询 IPv4 信息..."
         local v4_json=""
         local v4_source=""
         local v4_success=false
-
+        
         # 定义多个 API 源
         local v4_apis=(
             "https://ipapi.co/json/"
@@ -762,16 +762,16 @@ collect_network_info() {
             "https://ipinfo.io/json"
         )
         local v4_api_names=("ipapi.co" "ip.sb" "ipinfo.io")
-
+        
         for i in "${!v4_apis[@]}"; do
             local api_url="${v4_apis[$i]}"
             local api_name="${v4_api_names[$i]}"
-
+            
             local retry_delays=(5 10 30)
             local max_retries=3
             local attempt=0
             local current_api_success=false
-
+            
             while [ $attempt -le $max_retries ]; do
                 if [ $attempt -eq 0 ]; then
                     v4_json=$(curl -s -4 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
@@ -791,22 +791,22 @@ collect_network_info() {
                 fi
                 attempt=$((attempt+1))
             done
-
+            
             if [ "$current_api_success" = "true" ]; then
                 v4_source="$api_name"
                 v4_success=true
                 break
             fi
-
+            
             if [ $i -lt $((${#v4_apis[@]} - 1)) ]; then
                 echo "  │  ├─ IPv4 检测失效 ($api_name)，尝试备用源..."
             fi
         done
-
+        
         if [ "$v4_success" = "true" ]; then
             HAS_V4="true"
             NET_V4_IP=$(echo "$v4_json" | jq -r '.ip // empty')
-
+            
             # 根据不同 API 解析字段（兼容不同返回格式）
             case "$v4_source" in
                 "ipapi.co")
@@ -852,7 +852,7 @@ collect_network_info() {
             fi
         fi
     fi
-
+    
     if [ "$SKIP_V6" = "false" ]; then
         if check_cmd ip && ! ip -6 addr show scope global 2>/dev/null | grep -q "inet6"; then
             echo "  └─ IPv6: N/A (未分配全局 IPv6 地址)"
@@ -866,7 +866,7 @@ collect_network_info() {
             local v6_json=""
             local v6_source=""
             local v6_success=false
-
+            
             # 定义多个 API 源（仅支持 IPv6 的服务）
             local v6_apis=(
                 "https://ipapi.co/json/"
@@ -874,16 +874,16 @@ collect_network_info() {
                 "https://ipinfo.io/json"
             )
             local v6_api_names=("ipapi.co" "ip.sb" "ipinfo.io")
-
+            
             for i in "${!v6_apis[@]}"; do
                 local api_url="${v6_apis[$i]}"
                 local api_name="${v6_api_names[$i]}"
-
+                
                 local retry_delays=(5 10 30)
                 local max_retries=3
                 local attempt=0
                 local current_api_success=false
-
+                
                 while [ $attempt -le $max_retries ]; do
                     if [ $attempt -eq 0 ]; then
                         v6_json=$(curl -s -6 --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null)
@@ -903,22 +903,22 @@ collect_network_info() {
                     fi
                     attempt=$((attempt+1))
                 done
-
+                
                 if [ "$current_api_success" = "true" ]; then
                     v6_source="$api_name"
                     v6_success=true
                     break
                 fi
-
+                
                 if [ $i -lt $((${#v6_apis[@]} - 1)) ]; then
                     echo "  │  ├─ IPv6 检测失效 ($api_name)，尝试备用源..."
                 fi
             done
-
+            
             if [ "$v6_success" = "true" ]; then
                 HAS_V6="true"
                 NET_V6_IP=$(echo "$v6_json" | jq -r '.ip // empty')
-
+                
                 # 根据不同 API 解析字段（兼容不同返回格式）
                 case "$v6_source" in
                     "ipapi.co")
@@ -982,10 +982,10 @@ collect_network_info() {
 # =========================
 collect_bgp_view() {
     log "开始 BGP 透视..."
-
+    
     local BGP_API_BASE="https://bgp-view.jam114514.me/bgp_info?ip="
     local has_any_bgp=false
-
+    
     # === IPv4 BGP 透视 ===
     if [ "$SKIP_V4" = "false" ] && [ "$HAS_V4" = "true" ]; then
         echo "  ├─ 获取 IPv4 BGP 信息..."
@@ -993,7 +993,7 @@ collect_bgp_view() {
         local v4_status=""
         local bgp_v4_retry=0
         local bgp_max_retry=3
-
+        
         while [ $bgp_v4_retry -lt $bgp_max_retry ]; do
             v4_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$v4_svg_url" 2>/dev/null)
             if [ "$v4_status" = "200" ]; then
@@ -1005,7 +1005,7 @@ collect_bgp_view() {
                 sleep 3
             fi
         done
-
+        
         if [ "$v4_status" = "200" ]; then
             BGP_V4_URL="$v4_svg_url"
             has_any_bgp=true
@@ -1023,14 +1023,14 @@ collect_bgp_view() {
             fi
         fi
     fi
-
+    
     # === IPv6 BGP 透视 ===
     if [ "$SKIP_V6" = "false" ] && [ "$HAS_V6" = "true" ]; then
         echo "  └─ 获取 IPv6 BGP 信息..."
         local v6_svg_url="${BGP_API_BASE}${NET_V6_IP}"
         local v6_status=""
         local bgp_v6_retry=0
-
+        
         while [ $bgp_v6_retry -lt $bgp_max_retry ]; do
             v6_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$v6_svg_url" 2>/dev/null)
             if [ "$v6_status" = "200" ]; then
@@ -1042,7 +1042,7 @@ collect_bgp_view() {
                 sleep 3
             fi
         done
-
+        
         if [ "$v6_status" = "200" ]; then
             BGP_V6_URL="$v6_svg_url"
             has_any_bgp=true
@@ -1052,7 +1052,7 @@ collect_bgp_view() {
             echo "     └─ IPv6 BGP 信息获取失败"
         fi
     fi
-
+    
     # === 生成报告 ===
     if [ "$has_any_bgp" = "true" ]; then
         {
@@ -1070,7 +1070,7 @@ collect_bgp_view() {
             fi
         } >> "$REPORT_FILE"
     fi
-
+    
     info "  └─ BGP 透视完成"
 }
 
@@ -1079,7 +1079,7 @@ collect_bgp_view() {
 # =========================
 collect_ip_quality() {
     log "开始 IP 质量检测..."
-
+    
     # 格式化布尔值为 YES/NO
     format_bool_yesno() {
         local val="$1"
@@ -1089,7 +1089,7 @@ collect_ip_quality() {
             *) echo "—" ;;
         esac
     }
-
+    
     # 格式化欺诈评分 (0-100, 越低越好)
     format_fraud_score() {
         local score="$1"
@@ -1105,7 +1105,7 @@ collect_ip_quality() {
             echo "$score|🔴 高"
         fi
     }
-
+    
     # 格式化滥用评分 (解析 "0.0078 (Low)" 格式)
     format_abuser_score() {
         local raw="$1"
@@ -1116,7 +1116,7 @@ collect_ip_quality() {
         # 提取数值和评级
         local num=$(echo "$raw" | awk '{print $1}')
         local level=$(echo "$raw" | grep -oP '\(\K[^)]+')
-
+        
         # 根据评级设置红绿灯 (中文)
         case "$level" in
             "Very Low") echo "$num|🟢 极低" ;;
@@ -1127,22 +1127,22 @@ collect_ip_quality() {
             *) echo "$num|$level" ;;
         esac
     }
-
+    
     # === 仅 IPv4 检测 ===
     if [ "$HAS_V4" != "true" ]; then
         warn "  └─ 未检测到 IPv4 地址，跳过 IP 质量检测"
         return
     fi
-
+    
     local ip="$NET_V4_IP"
     echo "  ├─ [IPv4] 查询质量信息: $ip"
-
+    
     # 1. ipapi.is - 滥用评分、机房识别、VPN/代理/Tor/爬虫/滥用检测
     echo "  │  ├─ 查询 ipapi.is..."
     local ipapi_json=""
     local ipapi_retry=0
     local quality_max_retry=3
-
+    
     while [ $ipapi_retry -lt $quality_max_retry ]; do
         ipapi_json=$(curl -s -4 --max-time 10 "https://api.ipapi.is/?q=$ip" 2>/dev/null)
         if [ -n "$ipapi_json" ] && echo "$ipapi_json" | jq -e '.ip' >/dev/null 2>&1; then
@@ -1154,12 +1154,12 @@ collect_ip_quality() {
             sleep 3
         fi
     done
-
+    
     local ipapi_abuser_score="" ipapi_asn_abuser_score=""
     local ipapi_is_datacenter="" ipapi_datacenter_name=""
     local ipapi_is_vpn="" ipapi_is_proxy="" ipapi_is_tor="" ipapi_is_crawler="" ipapi_is_abuser=""
     local ipapi_company_type="" ipapi_is_mobile="" ipapi_is_bogon="" ipapi_is_satellite=""
-
+    
     if [ -n "$ipapi_json" ] && echo "$ipapi_json" | jq -e '.ip' >/dev/null 2>&1; then
         ipapi_abuser_score=$(echo "$ipapi_json" | jq -r '.company.abuser_score // empty')
         ipapi_asn_abuser_score=$(echo "$ipapi_json" | jq -r '.asn.abuser_score // empty')
@@ -1175,12 +1175,12 @@ collect_ip_quality() {
         ipapi_is_bogon=$(echo "$ipapi_json" | jq -r 'if .is_bogon == null then "" else (.is_bogon | tostring) end')
         ipapi_is_satellite=$(echo "$ipapi_json" | jq -r 'if .is_satellite == null then "" else (.is_satellite | tostring) end')
     fi
-
+    
     # 2. ippure - 欺诈评分、原生 IP 识别
     echo "  │  ├─ 查询 ippure.com..."
     local ippure_json=""
     local ippure_retry=0
-
+    
     while [ $ippure_retry -lt $quality_max_retry ]; do
         ippure_json=$(curl -s -4 --max-time 10 "https://my.ippure.com/v1/info" 2>/dev/null)
         if [ -n "$ippure_json" ] && echo "$ippure_json" | jq -e '.ip' >/dev/null 2>&1; then
@@ -1192,27 +1192,27 @@ collect_ip_quality() {
             sleep 3
         fi
     done
-
+    
     local ippure_fraud_score="" ippure_is_residential=""
-
+    
     if [ -n "$ippure_json" ] && echo "$ippure_json" | jq -e '.ip' >/dev/null 2>&1; then
         ippure_fraud_score=$(echo "$ippure_json" | jq -r '.fraudScore // empty')
         ippure_is_residential=$(echo "$ippure_json" | jq -r 'if .isResidential == null then "" else (.isResidential | tostring) end')
     fi
-
+    
     # === 格式化各项评分 ===
     local fraud_formatted=$(format_fraud_score "$ippure_fraud_score")
     local fraud_val=$(echo "$fraud_formatted" | cut -d'|' -f1)
     local fraud_remark=$(echo "$fraud_formatted" | cut -d'|' -f2)
-
+    
     local abuser_formatted=$(format_abuser_score "$ipapi_abuser_score")
     local abuser_val=$(echo "$abuser_formatted" | cut -d'|' -f1)
     local abuser_remark=$(echo "$abuser_formatted" | cut -d'|' -f2)
-
+    
     local asn_formatted=$(format_abuser_score "$ipapi_asn_abuser_score")
     local asn_val=$(echo "$asn_formatted" | cut -d'|' -f1)
     local asn_remark=$(echo "$asn_formatted" | cut -d'|' -f2)
-
+    
     # === 格式化机房识别结果 ===
     local datacenter_result="" datacenter_remark=""
     if [ "$ipapi_is_datacenter" = "true" ]; then
@@ -1224,17 +1224,17 @@ collect_ip_quality() {
         datacenter_result="❌ **NO**"
         datacenter_remark=""
     fi
-
+    
     # VPN/代理合并检测
     local vpn_proxy_result="false"
     [[ "$ipapi_is_vpn" = "true" || "$ipapi_is_proxy" = "true" ]] && vpn_proxy_result="true"
-
+    
     # === 终端输出关键结果 ===
     echo "  │  ├─ 欺诈评分: ${ippure_fraud_score:-N/A} | 滥用评分: ${ipapi_abuser_score:-N/A}"
     echo "  │  ├─ 组织类型: ${ipapi_company_type:-N/A} | 机房: ${ipapi_is_datacenter:-N/A} | 移动: ${ipapi_is_mobile:-N/A}"
     echo "  │  ├─ VPN/代理: ${vpn_proxy_result} | Tor: ${ipapi_is_tor:-N/A} | 原生: ${ippure_is_residential:-N/A}"
     echo "  │  └─ 检测完成"
-
+    
     # === 生成报告 ===
     {
         echo "## IPv4 质量分析"
@@ -1271,7 +1271,7 @@ collect_ip_quality() {
         echo "| 保留 IP | $(format_bool_yesno "$ipapi_is_bogon") | | ipapi.is |"
 
     } >> "$REPORT_FILE"
-
+    
     info "  └─ IP 质量检测完成"
 }
 
@@ -1281,12 +1281,12 @@ collect_ip_quality() {
 run_cpu_test() {
     log "开始 CPU 性能测试..."
     if ! check_cmd sysbench; then warn "  └─ sysbench 未安装，跳过"; return; fi
-
+    
     echo "  ├─ 单线程测试 (20秒)..."
     local res_1t=$(sysbench --threads=1 --time=20 --cpu-max-prime=10000 cpu run 2>&1)
     local score_1t=$(echo "$res_1t" | grep "events per second:" | awk '{print $4}')
     echo "  │  └─ 单线程结果: $score_1t events/s"
-
+    
     local score_nt=""
     local multi="1.00"
     if [ "$SYS_CORES" -gt 1 ]; then
@@ -1298,11 +1298,11 @@ run_cpu_test() {
     else
         echo "  └─ (单核心，跳过多线程测试)"
     fi
-
+    
     BENCH_CPU_1T="$score_1t"
     BENCH_CPU_NT="${score_nt:-N/A}"
     BENCH_CPU_MULTI="$multi"
-
+    
     # === Streaming Report ===
     {
         echo "## CPU 性能测试"
@@ -1312,36 +1312,36 @@ run_cpu_test() {
         echo "| 多线程测试 | $BENCH_CPU_NT ($BENCH_CPU_MULTI x) |"
         echo ""
     } >> "$REPORT_FILE"
-
+    
     info "  └─ CPU 测试完成"
 }
 
 run_gb6_test() {
     log "开始 Geekbench 6 测试..."
-
+    
     # 检查 GB6_BIN 是否可用
     if [ "$GB6_BIN" = "false" ] || [ -z "$GB6_BIN" ]; then
         warn "  └─ Geekbench 6 未安装或下载失败，跳过"
         return
     fi
-
+    
     if [ ! -x "$GB6_BIN" ] && ! command -v "$GB6_BIN" >/dev/null 2>&1; then
         warn "  └─ Geekbench 6 不可执行，跳过"
         return
     fi
-
+    
     # Geekbench 6 需要至少 2GB 内存，检查并创建临时 swap
     local gb6_tmp_swap=""
     local mem_total_mb=$(free -m | awk '/Mem:/ {print $2}')
     local swap_total_mb=$(free -m | awk '/Swap:/ {print $2}')
     local total_mb=$((mem_total_mb + swap_total_mb))
     local min_required_mb=2048
-
+    
     if [ "$total_mb" -lt "$min_required_mb" ]; then
         local need_mb=2048  # 直接创建 2GB swap
         echo "  ├─ 检测到内存不足 (${total_mb}MB < ${min_required_mb}MB)"
         echo "  │  ├─ 创建 ${need_mb}MB 临时 swap..."
-
+        
         gb6_tmp_swap="$TMP_DIR/gb6_swapfile"
         if dd if=/dev/zero of="$gb6_tmp_swap" bs=1M count="$need_mb" 2>/dev/null && \
            chmod 600 "$gb6_tmp_swap" && \
@@ -1353,9 +1353,9 @@ run_gb6_test() {
             gb6_tmp_swap=""
         fi
     fi
-
+    
     echo "  ├─ 正在运行 Geekbench 6 测试 (约需 3-5 分钟)..."
-
+    
     # 启动后台进度指示器
     local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     SPINNER_PID=""
@@ -1371,25 +1371,25 @@ run_gb6_test() {
         done
     ) &
     SPINNER_PID=$!
-
+    
     # 运行 Geekbench 6 测试 (免费版会自动上传结果到 Geekbench Browser)
     local gb6_output=""
     gb6_output=$("$GB6_BIN" 2>&1)
     local gb6_exit_code=$?
-
+    
     # 停止进度指示器
     kill $SPINNER_PID 2>/dev/null
     wait $SPINNER_PID 2>/dev/null
     SPINNER_PID=""
-
+    
     if [ $gb6_exit_code -ne 0 ]; then
         echo -e "\r  │  └─ Geekbench 6 测试失败 ${RED}✗${NC}              "
         warn "  └─ 测试失败，请检查系统兼容性"
         return
     fi
-
+    
     echo -e "\r  │  └─ 测试完成 ${GREEN}✓${NC}                        "
-
+    
     # 解析结果
     local single_score=""
     local multi_score=""
@@ -1400,14 +1400,14 @@ run_gb6_test() {
     local cpu_topology=""
     local l3_cache=""
     local instruction_sets=""
-
+    
     # 先获取 URL
     result_url=$(echo "$gb6_output" | grep -oE 'https://browser\.geekbench\.com/v6/cpu/[0-9]+' | head -n1)
-
+    
     # 尝试从命令行输出解析分数
     single_score=$(echo "$gb6_output" | grep -i "Single-Core Score" | awk '{print $NF}')
     multi_score=$(echo "$gb6_output" | grep -i "Multi-Core Score" | awk '{print $NF}')
-
+    
     # 从网页抓取详细信息
     if [ -n "$result_url" ]; then
         echo "  ├─ 从 Geekbench 网站获取详细信息..."
@@ -1443,7 +1443,7 @@ run_gb6_test() {
             [[ "$raw_isa" == *"aesni"* ]] && instruction_sets="$instruction_sets, AES-NI"
         fi
     fi
-
+    
     # 输出结果
     [ -n "$gb6_version" ] && echo "  ├─ 版本: $gb6_version"
     [ -n "$cpu_name" ] && echo "  ├─ 处理器: $cpu_name"
@@ -1454,12 +1454,12 @@ run_gb6_test() {
     echo "  ├─ 单核分数: ${single_score:-N/A}"
     echo "  ├─ 多核分数: ${multi_score:-N/A}"
     [ -n "$result_url" ] && echo "  ├─ 结果链接: $result_url"
-
+    
     # 保存到全局变量
     GB6_SINGLE="${single_score:-N/A}"
     GB6_MULTI="${multi_score:-N/A}"
     GB6_URL="${result_url:-}"
-
+    
     # === Streaming Report ===
     {
         echo "## Geekbench 6 测试"
@@ -1481,7 +1481,7 @@ run_gb6_test() {
         fi
         echo ""
     } >> "$REPORT_FILE"
-
+    
     # 清理临时 swap
     if [ -n "$gb6_tmp_swap" ] && [ -f "$gb6_tmp_swap" ]; then
         echo "  ├─ 清理临时 swap..."
@@ -1489,36 +1489,36 @@ run_gb6_test() {
         rm -f "$gb6_tmp_swap" 2>/dev/null || true
         echo "  │  └─ 临时 swap 已清理 ✓"
     fi
-
+    
     info "  └─ Geekbench 6 测试完成"
 }
 
 run_disk_test() {
     log "开始磁盘性能测试..."
     if ! check_cmd fio; then warn "  └─ fio 未安装，跳过"; return; fi
-
+    
     local testfile="$TMP_DIR/fio_test"
-
+    
     # Detect best available ioengine (libaio preferred, fallback to sync)
     local ioengine="sync"
     if [ -e /sys/module/libaio ] || modinfo libaio >/dev/null 2>&1; then
         ioengine="libaio"
     fi
-
+    
     # Use --minimal output format for reliable parsing (semicolon-delimited)
     # Format: https://fio.readthedocs.io/en/latest/fio_doc.html#minimal-output
     local job_defaults="--ioengine=$ioengine --size=50m --runtime=10 --iodepth=32 --direct=1 --minimal --filename=$testfile"
-
+    
     parse_fio_minimal() {
         local output="$1"
         local type="$2"  # r or w
         local kbps=0
         local iops=0
-
+        
         # fio --minimal 输出可能包含警告信息（如 "note: ..."）
         # 需要过滤掉，只保留以数字开头的数据行
         local data_line=$(echo "$output" | grep '^[0-9]')
-
+        
         # Minimal output is semicolon-delimited
         # Read: field 7 = KB/s, field 8 = IOPS (1-indexed)
         # Write: field 48 = KB/s, field 49 = IOPS (1-indexed)
@@ -1531,54 +1531,54 @@ run_disk_test() {
                 iops=$(echo "$data_line" | cut -d';' -f49 2>/dev/null)
             fi
         fi
-
+        
         # Default to 0 if empty
         kbps=${kbps:-0}
         iops=${iops:-0}
-
+        
         # Convert KB/s to MB/s (handle empty/non-numeric values)
         if [[ "$kbps" =~ ^[0-9]+\.?[0-9]*$ ]]; then
             local mbps=$(calc "${kbps}/1024")
         else
             local mbps="0.00"
         fi
-
+        
         if [[ "$iops" =~ ^[0-9]+\.?[0-9]*$ ]]; then
             local iops_int=$(printf "%.0f" "${iops}" 2>/dev/null || echo "0")
         else
             local iops_int="0"
         fi
-
+        
         echo "$mbps MB/s ($iops_int IOPS)"
     }
-
+    
     echo "  ├─ [1/4] 写入测试 (4K) (10秒)..."
     local w4=$(fio --name=w4k --rw=randwrite --bs=4k $job_defaults 2>/dev/null)
     local res_w4=$(parse_fio_minimal "$w4" "w")
     echo "  │  └─ 结果: $res_w4"
-
+    
     echo "  ├─ [2/4] 读取测试 (4K) (10秒)..."
     local r4=$(fio --name=r4k --rw=randread --bs=4k $job_defaults 2>/dev/null)
     local res_r4=$(parse_fio_minimal "$r4" "r")
     echo "  │  └─ 结果: $res_r4"
-
+    
     echo "  ├─ [3/4] 写入测试 (128K) (10秒)..."
     local w128=$(fio --name=w128k --rw=write --bs=128k $job_defaults 2>/dev/null)
     local res_w128=$(parse_fio_minimal "$w128" "w")
     echo "  │  └─ 结果: $res_w128"
-
+    
     echo "  ├─ [4/4] 读取测试 (128K) (10秒)..."
     local r128=$(fio --name=r128k --rw=read --bs=128k $job_defaults 2>/dev/null)
     local res_r128=$(parse_fio_minimal "$r128" "r")
     echo "  │  └─ 结果: $res_r128"
-
+    
     rm -f "$testfile"
-
+    
     BENCH_DISK_W4="$res_w4"
     BENCH_DISK_R4="$res_r4"
     BENCH_DISK_W128="$res_w128"
     BENCH_DISK_R128="$res_r128"
-
+    
     # === Streaming Report ===
     {
         echo "## 磁盘性能测试"
@@ -1590,7 +1590,7 @@ run_disk_test() {
         echo "| 读取测试 (128K) | $BENCH_DISK_R128 |"
         echo ""
     } >> "$REPORT_FILE"
-
+    
     info "  └─ 磁盘测试完成"
 }
 
@@ -1602,7 +1602,7 @@ run_iperf_once() {
     local ipflag="$5"
     local args=("$ipflag" "-c" "$host" "-p" "$port" "-P" "$parallel" "-t" "5")
     [ "$reverse" = "true" ] && args+=("-R")
-
+    
     local ret="busy"
     for i in 1 2; do
         local out
@@ -1626,7 +1626,7 @@ run_iperf_once() {
 run_iperf_test() {
     log "开始网络带宽测试..."
     if ! check_cmd iperf3; then warn "  └─ iperf3 未安装，跳过"; return; fi
-
+    
     local locs=(
         "lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6"
         "iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6"
@@ -1640,14 +1640,14 @@ run_iperf_test() {
         "14.119.118.214|5201|青毅云|深圳电信|IPv4"
         "36.150.232.152|5201|青毅云|江苏移动|IPv4"
     )
-
+    
     # === Streaming Report (Header) ===
     {
         echo "## 网络带宽测试"
         echo "| IP 类型 | 运营商 | 服务器位置 | 发送带宽 | 接收带宽 | 延迟 |"
         echo "| :--- | :--- | :--- | :--- | :--- | :--- |"
     } >> "$REPORT_FILE"
-
+    
     echo "  ├─ 国际节点测试..."
     local idx=0
     for entry in "${locs[@]}"; do
@@ -1659,7 +1659,7 @@ run_iperf_test() {
             if [ "$mode" == "IPv4" ] && [ "$HAS_V4" != "true" ]; then continue; fi
             if [ "$mode" == "IPv6" ] && [ "$HAS_V6" != "true" ]; then continue; fi
             local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
-
+            
             echo "  │  ├─ [$idx/${#locs[@]}] $provider - $loc ($mode)..."
             local p=$((p0 + RANDOM % (p1 - p0 + 1)))
             local send=$(run_iperf_once "$host" "$p" 8 false "$ipflag")
@@ -1668,16 +1668,16 @@ run_iperf_test() {
             local lat="--"
             if [ "$mode" = "IPv4" ]; then lat=$(ping -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); else lat=$(ping6 -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); fi
             echo "  │  │  └─ 发送: ${send} / 接收: ${recv} / 延迟: ${lat:---} ms"
-
+            
             # Streaming Row
             echo "| $mode | $provider | $loc | $send | $recv | ${lat:---} ms |" >> "$REPORT_FILE"
         done
     done
-
+    
     echo "" >> "$REPORT_FILE"
-
+    
     echo "  ├─ 国内节点测试..."
-
+    
     # === Streaming Report (Domestic Header) ===
     if [ "$HAS_V4" = "true" ] && [ ${#locs_cn[@]} -gt 0 ]; then
         {
@@ -1691,7 +1691,7 @@ run_iperf_test() {
             echo "| :--- | :--- | :--- | :--- |"
         } >> "$REPORT_FILE"
     fi
-
+    
     idx=0
     for entry in "${locs_cn[@]}"; do
         idx=$((idx+1))
@@ -1703,17 +1703,17 @@ run_iperf_test() {
         local s1=$(run_iperf_once "$host" "$port" 1 false "-4")
         local r1=$(run_iperf_once "$host" "$port" 1 true "-4")
         echo "  │  │  │  └─ 发送: $s1 / 接收: $r1"
-
+        
         echo "| $provider $loc | 1 | $s1 | $r1 |" >> "$REPORT_FILE"
-
+        
         echo "  │  │  ├─ 8线程..."
         local s8=$(run_iperf_once "$host" "$port" 8 false "-4")
         local r8=$(run_iperf_once "$host" "$port" 8 true "-4")
         echo "  │  │  │  └─ 发送: $s8 / 接收: $r8"
-
+        
         echo "| $provider $loc | 8 | $s8 | $r8 |" >> "$REPORT_FILE"
     done
-
+    
     echo "" >> "$REPORT_FILE"
     info "  └─ 带宽测试完成"
 
@@ -1721,68 +1721,68 @@ run_iperf_test() {
 
 run_cloudflare_speedtest() {
     log "开始 Cloudflare Speedtest..."
-
+    
     if [ "$CFSPEED_BIN" == "false" ] || [ -z "$CFSPEED_BIN" ]; then
         warn "  └─ cloudflare-speed-cli 未安装或下载失败，跳过"
         return
     fi
-
+    
     if [ ! -x "$CFSPEED_BIN" ] && ! command -v "$CFSPEED_BIN" >/dev/null 2>&1; then
         warn "  └─ cloudflare-speed-cli ($CFSPEED_BIN) 不可执行，跳过"
         return
     fi
-
+    
     echo "  ├─ 正在测试 Cloudflare CDN 速度..."
-
+    
     # 运行测试并获取 JSON 输出
     local json_output
     json_output=$("$CFSPEED_BIN" --json 2>/dev/null)
-
+    
     if [ -z "$json_output" ] || ! echo "$json_output" | jq -e . >/dev/null 2>&1; then
         warn "  └─ Cloudflare Speedtest 失败: 无效输出"
         return
     fi
-
+    
     # 解析 JSON 结果
     local cf_ip=$(echo "$json_output" | jq -r '.ip // "N/A"')
     local cf_colo=$(echo "$json_output" | jq -r '.colo // "N/A"')
     local cf_asn=$(echo "$json_output" | jq -r '.asn // "N/A"')
     local cf_city=$(echo "$json_output" | jq -r '.meta.city // "N/A"')
     local cf_country=$(echo "$json_output" | jq -r '.meta.country // "N/A"')
-
+    
     # 下载速度
     local dl_mbps=$(echo "$json_output" | jq -r '.download.mbps // 0' | xargs printf "%.2f")
     local dl_median=$(echo "$json_output" | jq -r '.download.median_mbps // 0' | xargs printf "%.2f")
     local dl_p25=$(echo "$json_output" | jq -r '.download.p25_mbps // 0' | xargs printf "%.2f")
     local dl_p75=$(echo "$json_output" | jq -r '.download.p75_mbps // 0' | xargs printf "%.2f")
-
+    
     # 上传速度
     local ul_mbps=$(echo "$json_output" | jq -r '.upload.mbps // 0' | xargs printf "%.2f")
     local ul_median=$(echo "$json_output" | jq -r '.upload.median_mbps // 0' | xargs printf "%.2f")
     local ul_p25=$(echo "$json_output" | jq -r '.upload.p25_mbps // 0' | xargs printf "%.2f")
     local ul_p75=$(echo "$json_output" | jq -r '.upload.p75_mbps // 0' | xargs printf "%.2f")
-
+    
     # 空闲延迟
     local idle_avg=$(echo "$json_output" | jq -r '.idle_latency.mean_ms // 0' | xargs printf "%.1f")
     local idle_median=$(echo "$json_output" | jq -r '.idle_latency.median_ms // 0' | xargs printf "%.1f")
     local idle_jitter=$(echo "$json_output" | jq -r '.idle_latency.jitter_ms // 0' | xargs printf "%.1f")
     local idle_loss=$(echo "$json_output" | jq -r '.idle_latency.loss // 0' | xargs printf "%.1f")
-
+    
     # 负载延迟 (下载)
     local loaded_dl_avg=$(echo "$json_output" | jq -r '.loaded_latency_download.mean_ms // 0' | xargs printf "%.1f")
     local loaded_dl_jitter=$(echo "$json_output" | jq -r '.loaded_latency_download.jitter_ms // 0' | xargs printf "%.1f")
-
+    
     # 负载延迟 (上传)
     local loaded_ul_avg=$(echo "$json_output" | jq -r '.loaded_latency_upload.mean_ms // 0' | xargs printf "%.1f")
     local loaded_ul_jitter=$(echo "$json_output" | jq -r '.loaded_latency_upload.jitter_ms // 0' | xargs printf "%.1f")
-
+    
     # 控制台输出
     echo "  │  ├─ 节点: $cf_colo ($cf_city, $cf_country)"
     echo "  │  ├─ IP: $cf_ip (AS$cf_asn)"
     echo "  │  ├─ 下载: ${dl_mbps} Mbps (中位数: ${dl_median} Mbps)"
     echo "  │  ├─ 上传: ${ul_mbps} Mbps (中位数: ${ul_median} Mbps)"
     echo "  │  └─ 延迟: ${idle_avg} ms (抖动: ${idle_jitter} ms)"
-
+    
     # === 写入报告 ===
     {
         echo "## Cloudflare Speedtest"
@@ -1802,46 +1802,46 @@ run_cloudflare_speedtest() {
         echo "| 负载延迟 (上传) | ${loaded_ul_avg} ms | ${loaded_ul_jitter} ms | - |"
         echo ""
     } >> "$REPORT_FILE"
-
+    
     # 清理 cloudflare-speed-cli 生成的本地数据
     rm -rf "$HOME/.local/share/cloudflare-speed-cli" 2>/dev/null
-
+    
     info "  └─ Cloudflare Speedtest 完成"
 }
 
 run_apple_speedtest() {
     log "开始 Apple CDN Speedtest..."
-
+    
     if [ "$INETSPEED_BIN" == "false" ] || [ -z "$INETSPEED_BIN" ]; then
         warn "  └─ iNetSpeed-CLI 未安装或下载失败，跳过"
         return
     fi
-
+    
     if [ ! -x "$INETSPEED_BIN" ] && ! command -v "$INETSPEED_BIN" >/dev/null 2>&1; then
         warn "  └─ iNetSpeed-CLI ($INETSPEED_BIN) 不可执行，跳过"
         return
     fi
-
+    
     echo "  ├─ 正在测试 Apple CDN 速度..."
-
+    
     # 非 TTY 模式下自动选择第一个节点，用 echo "" 发送回车确认
     local raw_output
     raw_output=$(echo "" | "$INETSPEED_BIN" 2>&1)
-
+    
     if [ -z "$raw_output" ]; then
         warn "  └─ Apple CDN Speedtest 失败: 无输出"
         return
     fi
-
+    
     # 清理 ANSI 转义序列
     local clean_output
     clean_output=$(echo "$raw_output" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/\r//g')
-
+    
     # 解析节点信息
     local endpoint=$(echo "$clean_output" | grep -oP 'Selected endpoint: \K[0-9.]+' | head -n1)
     local endpoint_loc=$(echo "$clean_output" | grep -oP 'Selected endpoint: [0-9.]+ \(\K[^)]+' | head -n1)
     [ -z "$endpoint" ] && endpoint=$(echo "$clean_output" | grep -oP 'Host: \K\S+' | head -n1)
-
+    
     # 解析空闲延迟 (header 和数据行之间隔了 [+] Samples: 行，需要 -A3)
     local idle_line=$(echo "$clean_output" | grep -A3 'Idle Latency' | grep -- '->' | head -n1)
     local idle_latency=$(echo "$idle_line" | grep -oP '[0-9.]+ ms median' | grep -oP '[0-9.]+' | head -n1)
@@ -1849,33 +1849,33 @@ run_apple_speedtest() {
     local idle_min=$(echo "$idle_line" | grep -oP 'min [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
     local idle_avg=$(echo "$idle_line" | grep -oP 'avg [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
     local idle_max=$(echo "$idle_line" | grep -oP 'max [0-9.]+' | grep -oP '[0-9.]+' | head -n1)
-
+    
     # 解析速度 - 匹配 "-> NNN Mbps" 汇总行（非 TTY 模式箭头是 -> 不是 ➜）
     # 下载单线程
     local dl_single=$(echo "$clean_output" | sed -n '/Download (single/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
     local dl_single_loaded=$(echo "$clean_output" | sed -n '/Download (single/,/Download (multi/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
-
+    
     # 下载多线程
     local dl_multi=$(echo "$clean_output" | sed -n '/Download (multi/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
     local dl_multi_loaded=$(echo "$clean_output" | sed -n '/Download (multi/,/Upload (single/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
-
+    
     # 上传单线程
     local ul_single=$(echo "$clean_output" | sed -n '/Upload (single/,/Loaded latency/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
     local ul_single_loaded=$(echo "$clean_output" | sed -n '/Upload (single/,/Upload (multi/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
-
+    
     # 上传多线程
     local ul_multi=$(echo "$clean_output" | sed -n '/Upload (multi/,/Summary/p' | grep -oP -- '->\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
     local ul_multi_loaded=$(echo "$clean_output" | sed -n '/Upload (multi/,/Summary/p' | grep -oP 'Loaded latency: \K[0-9.]+ ms' | head -n1)
-
+    
     # 解析数据用量
     local data_used=$(echo "$clean_output" | grep -oP 'Data Used:\s+\K[0-9.]+ [A-Za-z]+' | head -n1)
-
+    
     # 控制台输出
     echo "  │  ├─ 节点: ${endpoint:-N/A} (${endpoint_loc:-N/A})"
     echo "  │  ├─ 下载: ${dl_single:-N/A} (单线程) / ${dl_multi:-N/A} (多线程)"
     echo "  │  ├─ 上传: ${ul_single:-N/A} (单线程) / ${ul_multi:-N/A} (多线程)"
     echo "  │  └─ 延迟: ${idle_latency:-N/A} ms (抖动: ${idle_jitter:-N/A} ms)"
-
+    
     # === 写入报告 ===
     {
         echo "## Apple CDN Speedtest"
@@ -1896,7 +1896,7 @@ run_apple_speedtest() {
         echo "| 数据用量 | ${data_used:-N/A} |"
         echo ""
     } >> "$REPORT_FILE"
-
+    
     info "  └─ Apple CDN Speedtest 完成"
 }
 
@@ -1905,13 +1905,13 @@ run_apple_speedtest() {
 # =========================
 run_stream_test() {
     log "开始服务解锁测试..."
-
+    
     # 检查网络可用性
     if [ "$HAS_V4" != "true" ] && [ "$HAS_V6" != "true" ]; then
         warn "  └─ 无可用网络，跳过服务解锁测试"
         return
     fi
-
+    
     # 从之前收集的网络信息中提取国家代码
     local country_code=""
     if [ "$HAS_V4" = "true" ] && [ -n "$NET_V4_LOC" ]; then
@@ -1919,16 +1919,16 @@ run_stream_test() {
     elif [ "$HAS_V6" = "true" ] && [ -n "$NET_V6_LOC" ]; then
         country_code=$(echo "$NET_V6_LOC" | awk -F', ' '{print $NF}' | xargs)
     fi
-
+    
     # 1-stream RegionRestrictionCheck 的区域 ID 定义:
     # 0=只进行跨国平台，1=台湾，2=香港，3=日本，4=北美，5=南美
     # 6=欧洲，7=大洋洲，8=韩国，9=东南亚，10=AI平台，11=非洲，99=体育直播
-
+    
     local region_id="0"  # 默认仅跨国平台
     local region_name="仅跨国平台"
     local detected_region_id=""
     local detected_region_name=""
-
+    
     # 根据国家代码映射到测试区域
     case "$country_code" in
         # 台湾
@@ -1954,9 +1954,9 @@ run_stream_test() {
         # 其他 -> 归类到跨国平台
         *) detected_region_id=""; detected_region_name="" ;;
     esac
-
+    
     echo "  ├─ 检测到服务器位置: ${country_code:-未知}"
-
+    
     # 如果检测到了对应的地区，询问用户选择
     if [ -n "$detected_region_id" ]; then
         echo "  ├─ 匹配测试区域: $detected_region_name (ID: $detected_region_id)"
@@ -1965,7 +1965,7 @@ run_stream_test() {
         echo "  │  ├─ [0] 仅跨国平台检测"
         echo -n -e "  │  ├─ ${YELLOW}请输入选项 (3 秒后自动选择模式 1): ${NC}"
         read -t 3 -r user_choice </dev/tty 2>/dev/null || { user_choice="1"; echo ""; }
-
+        
         case "$user_choice" in
             0)
                 region_id="0"
@@ -1981,19 +1981,19 @@ run_stream_test() {
         region_id="0"
         region_name="仅跨国平台"
     fi
-
+    
     echo "  │  └─ 选择测试区域: $region_name (ID: $region_id)"
-
+    
     # 调用外部流媒体测试脚本
     # -R: 指定测试区域
     # -M 4: 仅使用 IPv4
     # -M 6: 仅使用 IPv6
-
+    
     # 下载并执行流媒体测试脚本，捕获输出
     local stream_output=""
     local stream_script_url="https://github.com/1-stream/RegionRestrictionCheck/raw/main/check.sh"
     local stream_tmp_file="$TMP_DIR/stream_output.txt"
-
+    
     # 下载脚本到临时文件
     echo -n "  ├─ 正在下载测试脚本..."
     local stream_script_file="$TMP_DIR/check_stream.sh"
@@ -2006,13 +2006,13 @@ run_stream_test() {
     sed -i -E 's/python3?  *-m json\.tool( 2>\/dev\/null)?/jq \./g' "$stream_script_file"
     echo -e " ${GREEN}完成${NC}"
     chmod +x "$stream_script_file"
-
+    
     # 定义执行单次测试的函数
     run_single_stream_test() {
         local test_mode="$1"
         local mode_name="$2"
         local output_file="$3"
-
+        
         # 启动后台进度指示器
         echo -n "  ├─ 正在执行 ${mode_name} 测试 "
         local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -2029,19 +2029,19 @@ run_stream_test() {
             done
         ) &
         SPINNER_PID=$!
-
+        
         # 执行测试 (新版 1-stream 脚本不支持 -R 参数指定区域，需要通过管道输入)
         if command -v script >/dev/null 2>&1; then
             TERM=xterm-256color script -q -c "echo '$region_id' | bash '$stream_script_file' -M '$test_mode'" "$output_file" >/dev/null 2>&1
         else
             echo "$region_id" | bash "$stream_script_file" -M "$test_mode" > "$output_file" 2>&1
         fi
-
+        
         # 停止进度指示器
         kill $SPINNER_PID 2>/dev/null
         wait $SPINNER_PID 2>/dev/null
         SPINNER_PID=""
-
+        
         if [ -f "$output_file" ] && [ -s "$output_file" ]; then
             echo -e "\r  ├─ ${mode_name} 测试完成 ${GREEN}✓${NC}              "
             return 0
@@ -2050,7 +2050,7 @@ run_stream_test() {
             return 1
         fi
     }
-
+    
     # 分开测试 IPv4 和 IPv6
     local stream_output_v4=""
     local stream_output_v6=""
@@ -2061,7 +2061,7 @@ run_stream_test() {
     local stream_tmp_ai_v4="$TMP_DIR/stream_ai_v4.txt"
     local stream_tmp_ai_v6="$TMP_DIR/stream_ai_v6.txt"
     local ai_region_id="10"
-
+    
     # 执行单个 IP 版本的所有测试（流媒体 + AIGC）
     run_combined_test() {
         local test_mode="$1"
@@ -2070,7 +2070,7 @@ run_stream_test() {
         local ai_file="$4"
         local region="$5"
         local ai_region="$6"
-
+        
         # 启动后台进度指示器
         echo -n "  ├─ 正在执行 ${mode_name} 检测 "
         local spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -2087,26 +2087,26 @@ run_stream_test() {
             done
         ) &
         SPINNER_PID=$!
-
+        
         # 执行流媒体测试
         if command -v script >/dev/null 2>&1; then
             TERM=xterm-256color script -q -c "echo '$region' | bash '$stream_script_file' -M '$test_mode'" "$stream_file" >/dev/null 2>&1
         else
             echo "$region" | bash "$stream_script_file" -M "$test_mode" > "$stream_file" 2>&1
         fi
-
+        
         # 执行 AIGC 测试
         if command -v script >/dev/null 2>&1; then
             TERM=xterm-256color script -q -c "echo '$ai_region' | bash '$stream_script_file' -M '$test_mode'" "$ai_file" >/dev/null 2>&1
         else
             echo "$ai_region" | bash "$stream_script_file" -M "$test_mode" > "$ai_file" 2>&1
         fi
-
+        
         # 停止进度指示器
         kill $SPINNER_PID 2>/dev/null
         wait $SPINNER_PID 2>/dev/null
         SPINNER_PID=""
-
+        
         # 检查结果
         local success=false
         if [ -f "$stream_file" ] && [ -s "$stream_file" ]; then
@@ -2115,7 +2115,7 @@ run_stream_test() {
         if [ -f "$ai_file" ] && [ -s "$ai_file" ]; then
             success=true
         fi
-
+        
         if [ "$success" = "true" ]; then
             echo -e "\r  ├─ ${mode_name} 检测完成 ${GREEN}✓${NC}              "
             return 0
@@ -2124,7 +2124,7 @@ run_stream_test() {
             return 1
         fi
     }
-
+    
     # IPv4 测试
     if [ "$HAS_V4" = "true" ]; then
         run_combined_test "4" "IPv4" "$stream_tmp_v4" "$stream_tmp_ai_v4" "$region_id" "$ai_region_id"
@@ -2132,7 +2132,7 @@ run_stream_test() {
         [ -f "$stream_tmp_ai_v4" ] && stream_output_ai_v4=$(cat "$stream_tmp_ai_v4" 2>/dev/null)
         rm -f "$stream_tmp_v4" "$stream_tmp_ai_v4"
     fi
-
+    
     # IPv6 测试
     if [ "$HAS_V6" = "true" ]; then
         run_combined_test "6" "IPv6" "$stream_tmp_v6" "$stream_tmp_ai_v6" "$region_id" "$ai_region_id"
@@ -2143,10 +2143,10 @@ run_stream_test() {
         # 只有当用户没有指定 -4 参数时才提示跳过
         echo "  ├─ IPv6 检测跳过 (IPv6: N/A)"
     fi
-
+    
     # 清理脚本文件
     rm -f "$stream_script_file"
-
+    
     # 合并输出
     stream_output=""
     if [ -n "$stream_output_v4" ]; then
@@ -2156,45 +2156,45 @@ run_stream_test() {
         stream_output="${stream_output}
 ${stream_output_v6}"
     fi
-
+    
     if [ -z "$stream_output" ]; then
         warn "  └─ 服务解锁测试失败：无法获取测试结果"
         return
     fi
-
+    
     info "  └─ 服务解锁测试完成"
-
+    
     # === Streaming Report ===
     # 解析流媒体测试结果并转换为表格
     parse_stream_to_table() {
         local output="$1"
         local ip_version="$2"
-
+        
         # 清理 ANSI 颜色代码和控制字符
         local cleaned=$(echo "$output" | \
             sed 's/\x1b\[[0-9;]*m//g' | \
             sed 's/\x1b\[H\x1b\[2J//g' | \
             sed 's/\x1b\[?25[hl]//g' | \
             tr -d '\r')
-
+        
         # 提取当前 IP 版本的测试结果
         local in_section="false"
         local current_category=""
         local last_category=""
         local results=""
-
+        
         while IFS= read -r line; do
             # 检测 IP 版本测试开始
             if echo "$line" | grep -q "正在测试.*$ip_version"; then
                 in_section="true"
                 continue
             fi
-
+            
             # 检测下一个 IP 版本测试开始（结束当前）
             if [ "$in_section" = "true" ] && echo "$line" | grep -q "正在测试.*IPv[46]"; then
                 break
             fi
-
+            
             # 在当前 IP 版本区域内
             if [ "$in_section" = "true" ]; then
                 # 匹配区域标题 ===[ xxx ]=== 或 ============[ xxx ]============
@@ -2205,7 +2205,7 @@ ${stream_output_v6}"
                     last_category="$current_category"
                     continue
                 fi
-
+                
                 # 匹配子分类 ---GB--- ---FR--- 等
                 if echo "$line" | grep -qE '^-{3}[A-Za-z]+-{3}$'; then
                     current_category=$(echo "$line" | sed 's/-//g')
@@ -2213,7 +2213,7 @@ ${stream_output_v6}"
                     results="${results}SUBCATEGORY:${current_category}|\n"
                     continue
                 fi
-
+                
                 # 匹配测试结果行（含Tab或多个空格和冒号）
                 # 排除: 脚本信息行、jq 错误输出、parse error 解析错误
                 if echo "$line" | grep -qE '^\s*[A-Za-z0-9+() -]+:\s+' && \
@@ -2237,29 +2237,29 @@ ${stream_output_v6}"
                         local service=$(echo "$trimmed" | cut -d':' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                         local status=$(echo "$trimmed" | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                     fi
-
+                    
                     # 直接使用原始状态，不做转换
                     results="${results}${service}|${status}\n"
                 fi
             fi
         done <<< "$cleaned"
-
+        
         echo -e "$results"
     }
-
+    
     {
         echo "## 服务解锁测试"
         echo ""
         echo "测试区域: **$region_name**"
         echo ""
-
+        
         # 定义输出单个分类的函数
         output_stream_category() {
             local output="$1"
             local ip_version="$2"
-
+            
             local current_table_started=false
-
+            
             parse_stream_to_table "$output" "$ip_version" | while IFS='|' read -r service status; do
                 if [ -n "$service" ]; then
                     if [[ "$service" == CATEGORY:* ]]; then
@@ -2286,17 +2286,17 @@ ${stream_output_v6}"
                 fi
             done
         }
-
+        
         # 定义输出 AIGC 的函数（无分类标题）
         output_aigc_section() {
             local output="$1"
             local ip_version="$2"
-
+            
             echo "#### AIGC"
             echo ""
             echo "| 服务 | 状态 |"
             echo "| :--- | :--- |"
-
+            
             parse_stream_to_table "$output" "$ip_version" | while IFS='|' read -r service status; do
                 if [ -n "$service" ]; then
                     # 跳过分类标题
@@ -2309,41 +2309,41 @@ ${stream_output_v6}"
             done
             echo ""
         }
-
+        
         # IPv4 结果
         if [ -n "$stream_output_v4" ] || [ -n "$stream_output_ai_v4" ]; then
             echo "### IPv4"
             echo ""
-
+            
             # 先输出 AIGC
             if [ -n "$stream_output_ai_v4" ]; then
                 output_aigc_section "$stream_output_ai_v4" "IPv4"
             fi
-
+            
             # 再输出其他流媒体分类
             if [ -n "$stream_output_v4" ]; then
                 output_stream_category "$stream_output_v4" "IPv4"
             fi
             echo ""
         fi
-
+        
         # IPv6 结果
         if [ -n "$stream_output_v6" ] || [ -n "$stream_output_ai_v6" ]; then
             echo "### IPv6"
             echo ""
-
+            
             # 先输出 AIGC
             if [ -n "$stream_output_ai_v6" ]; then
                 output_aigc_section "$stream_output_ai_v6" "IPv6"
             fi
-
+            
             # 再输出其他流媒体分类
             if [ -n "$stream_output_v6" ]; then
                 output_stream_category "$stream_output_v6" "IPv6"
             fi
             echo ""
         fi
-
+        
     } >> "$REPORT_FILE"
 }
 
@@ -2365,7 +2365,7 @@ create_ix_map() {
 normalize_isp_name() {
     local isp="$1"
     local isp_lower=$(echo "$isp" | tr '[:upper:]' '[:lower:]')
-
+    
     # === 1. 中国运营商海外分支（必须优先匹配）===
     # 联通海外
     [[ "$isp" == *"联通"*"香港"* || "$isp" == *"联通（香港）"* || "$isp_lower" == *"unicom"*"hong kong"* ]] && { echo "中国联通（香港）"; return; }
@@ -2374,14 +2374,14 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"ctgnet"* || "$isp_lower" == *"china telecom global"* ]] && { echo "中国电信（国际）"; return; }
     # 移动海外 (CMI = China Mobile International)
     [[ "$isp" == *"移动"*"CMI"* || "$isp" == *"移动 CMI"* || "$isp_lower" == *"cmi.chinamobile"* || "$isp_lower" == *"cmi-int"* || ( "$isp_lower" == *"cmi"* && "$isp_lower" == *"mobile"* ) ]] && { echo "中国移动（国际）"; return; }
-
+    
     # === 2. 港澳运营商 ===
     [[ "$isp" == *"电讯盈科"* || "$isp_lower" == *"pccw"* ]] && { echo "PCCW"; return; }
     [[ "$isp" == *"和记"* || "$isp_lower" == *"hgc"* || "$isp_lower" == *"hutchison"* ]] && { echo "HGC"; return; }
     # 中国移动香港变体
     [[ "$isp" == *"中国移动"*"香港"* || "$isp" == *"中国移动（香港）"* ]] && { echo "中国移动（香港）"; return; }
     [[ "$isp_lower" == *"cmi"* && "$isp_lower" == *"hong kong"* ]] && { echo "中国移动（香港）"; return; }
-
+    
     # === 3. 中国三大运营商（国内，通配符匹配）===
     [[ "$isp" == *"联通"* || "$isp_lower" == *"unicom"* || "$isp_lower" == *"bbn.com.cn"* || "$isp_lower" == *"cuii"* ]] && [[ "$isp" != *"中国联通"* ]] && { echo "中国联通"; return; }
     [[ "$isp" == *"电信"* || "$isp_lower" == *"chinatelecom"* || "$isp_lower" == *"189.cn"* || "$isp_lower" == *"cn2"* || ( "$isp_lower" == *"telecom"* && "$isp_lower" == *"china"* ) ]] && [[ "$isp" != *"中国电信"* ]] && { echo "中国电信"; return; }
@@ -2393,7 +2393,7 @@ normalize_isp_name() {
     [[ "$isp" == "中国联通/骨干网" ]] && { echo "中国联通"; return; }
     # 中国移动国际统一格式
     [[ "$isp" == "中国移动国际" ]] && { echo "中国移动（国际）"; return; }
-
+    
     # === 4. 国际运营商 ===
     [[ "$isp_lower" == *"google"* || "$isp" == *"谷歌"* ]] && { echo "Google"; return; }
     [[ "$isp_lower" == *"misaka"* ]] && { echo "Misaka"; return; }
@@ -2432,7 +2432,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"xtom"* ]] && { echo "xTom"; return; }
     [[ "$isp_lower" == *"airband"* ]] && { echo "Airband"; return; }
     [[ "$isp_lower" == *"pccw"* && "$isp" != "PCCW" ]] && { echo "PCCW"; return; }
-
+    
     # === 5. 日本运营商 ===
     [[ "$isp_lower" == *"gmo"* || "$isp_lower" == *"internet.gmo"* ]] && { echo "GMO Internet"; return; }
     [[ "$isp_lower" == *"biglobe"* ]] && { echo "Biglobe"; return; }
@@ -2443,7 +2443,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"iij"* || "$isp_lower" == *"internet initiative japan"* ]] && { echo "IIJ"; return; }
     [[ "$isp_lower" == *"sakura"* ]] && { echo "Sakura"; return; }
     [[ "$isp" == *"日本网络信息中心"* || "$isp_lower" == *"jpnic"* || "$isp_lower" == *"japan network information"* ]] && { echo "JPNIC"; return; }
-
+    
     # === 6. 云厂商与服务商 ===
     [[ "$isp_lower" == *"amazon"* || "$isp" == *"亚马逊"* ]] && { echo "AWS"; return; }
     [[ "$isp_lower" == *"cloudflare"* ]] && { echo "Cloudflare"; return; }
@@ -2498,14 +2498,14 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"kt corp"* || "$isp_lower" == *"korea telecom"* ]] && { echo "KT"; return; }
     [[ "$isp_lower" == *"sk broadband"* || "$isp_lower" == *"sk telecom"* ]] && { echo "SK"; return; }
     [[ "$isp_lower" == *"lg uplus"* || "$isp_lower" == *"lg u+"* ]] && { echo "LG U+"; return; }
-
+    
     # === 7. 越南运营商 ===
     [[ "$isp_lower" == *"fpt"* || "$isp_lower" == *"fpt telecom"* ]] && { echo "FPT"; return; }
     [[ "$isp" == *"越南互联网络信息中心"* || "$isp_lower" == *"vnnic"* ]] && { echo "VNNIC"; return; }
     [[ "$isp_lower" == *"viettel"* ]] && { echo "Viettel"; return; }
     [[ "$isp_lower" == *"vnpt"* ]] && { echo "VNPT"; return; }
     [[ "$isp_lower" == *"mobifone"* ]] && { echo "MobiFone"; return; }
-
+    
     # === 8. 欧洲托管与运营商 ===
     [[ "$isp_lower" == *"ghostnet"* ]] && { echo "GHOSTnet"; return; }
     [[ "$isp_lower" == *"tube-hosting"* || "$isp_lower" == *"ferdinand zink"* ]] && { echo "Tube-Hosting"; return; }
@@ -2528,7 +2528,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"jose antonio vazquez quian"* || "$isp_lower" == *"andaina"* ]] && { echo "Andaina"; return; }
     [[ "$isp_lower" == *"r cable"* ]] && { echo "R Cable"; return; }
     [[ "$isp_lower" == *"i3d.net"* || "$isp_lower" == *"i3d net"* ]] && { echo "i3D.net"; return; }
-
+    
     # === 9. 俄罗斯运营商 ===
     [[ "$isp_lower" == *"rostelecom"* ]] && { echo "Rostelecom"; return; }
     [[ "$isp_lower" == *"mts"* ]] && { echo "MTS"; return; }
@@ -2536,7 +2536,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"megafon"* ]] && { echo "MegaFon"; return; }
     [[ "$isp_lower" == *"yandex"* ]] && { echo "Yandex"; return; }
     [[ "$isp_lower" == *"mail.ru"* || "$isp_lower" == *"vk.com"* ]] && { echo "VK"; return; }
-
+    
     # === 10. 其他亚洲运营商 ===
     [[ "$isp_lower" == *"pldt"* ]] && { echo "PLDT"; return; }
     [[ "$isp_lower" == *"globe"* && "$isp_lower" == *"philippines"* ]] && { echo "Globe"; return; }
@@ -2550,7 +2550,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"bsnl"* || "$isp_lower" == *"bharat sanchar"* ]] && { echo "BSNL"; return; }
     [[ "$isp_lower" == *"jio"* || "$isp_lower" == *"reliance"* ]] && { echo "Jio"; return; }
     [[ "$isp_lower" == *"airtel"* ]] && { echo "Airtel"; return; }
-
+    
     # === 11. CDN 与托管服务 ===
     [[ "$isp_lower" == *"bunny"* || "$isp_lower" == *"bunnycdn"* ]] && { echo "BunnyCDN"; return; }
     [[ "$isp_lower" == *"stackpath"* || "$isp_lower" == *"highwinds"* ]] && { echo "StackPath"; return; }
@@ -2581,7 +2581,7 @@ normalize_isp_name() {
     [[ "$isp_lower" == *"ssdnodes"* ]] && { echo "SSD Nodes"; return; }
     [[ "$isp_lower" == *"webtropia"* ]] && { echo "Netcup"; return; }
     [[ "$isp_lower" == *"melbicom"* ]] && { echo "Melbicom"; return; }
-
+    
     # 如果没有匹配，返回原始值
     echo "$isp"
 }
@@ -2589,7 +2589,7 @@ normalize_isp_name() {
 get_trace_targets() {
     local targets_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/trace_targets.txt"
     local targets_file="$TMP_DIR/trace_targets.txt"
-
+    
     # 下载目标列表文件
     if ! retry_download "$targets_file" "$targets_url" "Trace Targets" "--connect-timeout 5 --max-time 15"; then
         warn "  Failed to download trace targets. Using fallback."
@@ -2608,42 +2608,42 @@ get_trace_targets() {
 FALLBACK_EOF
         return
     fi
-
+    
     # 过滤掉纯注释行（保留 #GROUP: 分组标记），输出内容
     grep -v '^# ' "$targets_file" | grep -v '^$'
 }
 
 run_trace_test() {
     local public_only="${1:-false}"  # 如果传入 "public_only"，则只测公共服务
-
+    
     if [ "$public_only" = "public_only" ]; then
         log "开始公共服务路由追踪..."
     else
         log "开始路由追踪测试..."
     fi
-
+    
     # 调试信息
     # log "NextTrace Binary: $NEXTTRACE_BIN"
-
-    if [ "$NEXTTRACE_BIN" == "false" ] || [ -z "$NEXTTRACE_BIN" ]; then
-        warn "  └─ NextTrace 二进制未找到或下载失败，跳过";
-        return;
+    
+    if [ "$NEXTTRACE_BIN" == "false" ] || [ -z "$NEXTTRACE_BIN" ]; then 
+        warn "  └─ NextTrace 二进制未找到或下载失败，跳过"; 
+        return; 
     fi
-
+    
     if [ ! -x "$NEXTTRACE_BIN" ] && ! command -v "$NEXTTRACE_BIN" >/dev/null 2>&1; then
         warn "  └─ NextTrace ($NEXTTRACE_BIN) 不可执行，跳过";
         return;
     fi
-
+    
     create_ix_map
-
+    
     echo "  ├─ 获取动态 CDN 节点..."
     local dynamic_targets=""
     if [ "$YTDLP_BIN" != "false" ] && { [ -x "$YTDLP_BIN" ] || command -v "$YTDLP_BIN" >/dev/null 2>&1; }; then
         # Try using "Me at the zoo" (jNQXAC9IVRw) and Android client to bypass bot detection
         local yt_video="https://www.youtube.com/watch?v=jNQXAC9IVRw"
         local yt_args="--no-warnings --extractor-args youtube:player_client=android -g"
-
+        
         if [ "$HAS_V4" = "true" ]; then
             # Debug: Capture stderr to see why it fails
             local yt_err="$TMP_DIR/yt_v4.err"
@@ -2673,21 +2673,21 @@ run_trace_test() {
     fi
     # Netflix (Fast.com) - simplified
     local nf_api="https://api.fast.com/netflix/speedtest/v2?https=true&token=YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm&urlCount=5"
-    if [ "$HAS_V4" = "true" ]; then
+    if [ "$HAS_V4" = "true" ]; then 
         local nf=$(curl -s -4 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv4"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
         [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)|$nf|"$'\n'
     fi
-    if [ "$HAS_V6" = "true" ]; then
+    if [ "$HAS_V6" = "true" ]; then 
         local nf=$(curl -s -6 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv6"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
         [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)||$nf"$'\n'
     fi
-
+    
     # 构建目标列表
     # 使用 process substitution 可能会在某些环境下有问题，改用字符串读取
     local raw_static=$(get_trace_targets)
     local all_targets=()
     local current_group=""
-
+    
     # === Streaming Report ===
     {
         echo "## 路由追踪"
@@ -2695,7 +2695,7 @@ run_trace_test() {
 
     # 首先添加公共服务目标（主要公共服务分组）
     local public_targets=""
-
+    
     # 公共 DNS 服务
     if [ "$HAS_V4" = "true" ]; then
         public_targets+="Cloudflare DNS|1.1.1.1|"$'\n'
@@ -2707,10 +2707,10 @@ run_trace_test() {
         public_targets+="Google DNS||2001:4860:4860::8888"$'\n'
         public_targets+="Quad9 DNS||2620:fe::fe"$'\n'
     fi
-
+    
     # 添加动态 CDN 目标
     public_targets+="$dynamic_targets"
-
+    
     if [ -n "$public_targets" ]; then
         all_targets+=("#GROUP:主要公共服务")
         while IFS= read -r line; do
@@ -2733,24 +2733,24 @@ run_trace_test() {
             fi
         done <<< "$raw_static"
     fi
-
+    
     local idx=0
     local total=0
     # 计算非分组行的总数
     for entry in "${all_targets[@]}"; do
         [[ "$entry" != "#GROUP:"* ]] && total=$((total+1))
     done
-
+    
     if [ "$total" -eq 0 ]; then
         warn "  └─ 未找到任何路由追踪目标"
         return
     fi
-
+    
     # 使用 C-style loop 来灵活处理数组索引
     for ((i=0; i<${#all_targets[@]}; i++)); do
         entry="${all_targets[$i]}"
         [ -z "$entry" ] && continue
-
+        
         # 处理分组标记
         if [[ "$entry" == "#GROUP:"* ]]; then
             local group_name="${entry#\#GROUP:}"
@@ -2762,7 +2762,7 @@ run_trace_test() {
                 echo "### $group_name"
                 echo ""
             } >> "$REPORT_FILE"
-
+            
             # --- 计算该分组的总数 ---
             # 向后扫描直到下一个 #GROUP: 或数组结束
             total=0
@@ -2778,10 +2778,10 @@ run_trace_test() {
                 fi
             done
             idx=0 # 重置组内序号
-
+            
             continue
         fi
-
+        
         # 如果一开始就没有 Group（防御性编程），先计算一个总数
         if [ "$total" -eq 0 ]; then
              for ((j=i; j<${#all_targets[@]}; j++)); do
@@ -2794,21 +2794,21 @@ run_trace_test() {
                 fi
             done
         fi
-
+        
         # idx=$((idx+1))  <-- Remove here, increment inside test loop
         IFS='|' read -r name ipv4 ipv6 <<< "$entry"
-
+        
         for mode in IPv4 IPv6; do
             local target=""
             [ "$mode" = "IPv4" ] && target="$ipv4"
             [ "$mode" = "IPv6" ] && target="$ipv6"
-
+            
             # 只有当 目标存在 且 (是IPv4且有V4网 OR 是IPv6且有V6网) 时才测试
             if [ -n "$target" ] && { ([ "$mode" = "IPv4" ] && [ "$HAS_V4" = "true" ]) || ([ "$mode" = "IPv6" ] && [ "$HAS_V6" = "true" ]); }; then
                 idx=$((idx+1))
                 echo "  │  ├─ [$idx/$total] $name ($mode)..."
                 local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
-
+                
                 # 运行 nexttrace
                 local raw_output=""
                 local err_out=""
@@ -2817,10 +2817,10 @@ run_trace_test() {
                 raw_output=$("$NEXTTRACE_BIN" --json $ipflag "$target" 2>"$err_file")
                 err_out=$(cat "$err_file" 2>/dev/null)
                 rm -f "$err_file"
-
+                
                 # Extract JSON part (remove everything before first '{')
                 local json=$(echo "$raw_output" | sed 's/^[^{]*//')
-
+                
                 # Verify JSON
                 if [ -z "$json" ] || ! echo "$json" | jq -e . >/dev/null 2>&1; then
                     echo "  │  │  └─ 失败: 无效输出"
@@ -2831,7 +2831,7 @@ run_trace_test() {
                         local clean_out=$(echo "$raw_output" | tr -d '\n' | sed 's/\x1b\[[0-9;]*m//g')
                         echo "  │  │     (原始内容): ${clean_out:0:100}..."
                     fi
-
+                    
                     if [ -n "$err_out" ]; then
                         local clean_err=$(echo "$err_out" | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
                         echo "  │     (错误信息): $clean_err"
@@ -2842,7 +2842,7 @@ run_trace_test() {
                     # NextTrace 1.5.0 quirks: sometimes [[hop1, hop2]], sometimes [hop1, hop2]
                     local table="| 跳数 | IP | ASN | 位置 | 运营商 | 延迟 |\n"
                     table+="|---:|:---|:---|:---|:---|---:|\n"
-
+                    
                         # 根据 NORMALIZE_OUTPUT 构建不同的 jq 查询
                         local jq_loc_filter
                         if [ "$NORMALIZE_OUTPUT" = "true" ]; then
@@ -2852,7 +2852,7 @@ run_trace_test() {
                             # 默认原始输出：不处理后缀
                             jq_loc_filter='map(select(. and . != ""))'
                         fi
-
+                        
                         local rows=$(echo "$json" | jq -r '
                         # NextTrace JSON: { Hops: [ [probe0, probe1, probe2], ... ] }
                         .Hops | to_entries[] |
@@ -2860,48 +2860,48 @@ run_trace_test() {
                         .value as $probes |
                         # 选择第一个成功的探测，如果没有则取第一个
                         ([$probes[] | select(.Success == true)][0] // $probes[0] // {}) as $p |
-
+                        
                         # IP地址：如果为null或空，显示 "*"
                         (if $p.Address then ($p.Address.IP // "*") else "*" end) as $ip |
-
+                        
                         # ASN：只有非空字符串才显示
                         (if $p.Geo and ($p.Geo.asnumber // "") != "" then "AS" + $p.Geo.asnumber else "-" end) as $asn |
-
+                        
                         # 地理位置：国家 省份 城市（过滤空值、去重）
                         (if $p.Geo then
                             ([$p.Geo.country, $p.Geo.prov, $p.Geo.city] | '"$jq_loc_filter"' | reduce .[] as $x ([]; if . | index($x) then . else . + [$x] end) | join(" "))
                         else "" end) as $loc_raw |
                         (if $loc_raw == "" then "-" else $loc_raw end) as $loc |
-
+                        
                         # 运营商：优先 isp，其次 owner
                         (if $p.Geo then
                             (if ($p.Geo.isp // "") != "" then $p.Geo.isp
                              elif ($p.Geo.owner // "") != "" then $p.Geo.owner
                              else "-" end)
                         else "-" end) as $isp |
-
+                        
                         # 延迟：RTT 单位是纳秒，转换为毫秒
                         (if $p.RTT and $p.RTT > 0 then
                             (($p.RTT / 1000000 * 100 | floor) / 100 | tostring)
                         else "-" end) as $rtt |
-
+                        
                         [$hopnum, $ip, $asn, $loc, $isp, $rtt] | @tsv
                     ' 2>/dev/null)
-
+                    
                     if [ -n "$rows" ]; then
                         while IFS=$'\t' read -r ttl ip asn loc isp rtt; do
                             [ -z "$ip" ] && continue
-
+                            
                             # 当IP为"*"时显示"-"
                             [ "$ip" = "*" ] && ip="-"
-
+                            
                             # IX Check (只有IP不为"-"时才检查)
                             if [ "$ip" != "-" ]; then
                                 local ix_name=$(grep -F "$ip " "$TMP_DIR/ix_ip_map.txt" 2>/dev/null | head -n1 | cut -d' ' -f2-)
                                 [ -n "$ix_name" ] && isp="$isp [$ix_name]"
                             fi
-
-
+                            
+                            
                             # 运营商名称规范化（仅在标准化输出模式下）
                             if [ "$NORMALIZE_OUTPUT" = "true" ]; then
                                 isp=$(normalize_isp_name "$isp")
@@ -2914,11 +2914,11 @@ run_trace_test() {
                             fi
                             table+="| $ttl | $ip | $asn | $loc | $isp | $rtt_display |\n"
                         done <<< "$rows"
+                        
 
-
-
+                        
                         echo "  │  │  └─ 追踪完成"
-
+                        
                         # === Streaming Report (Trace Item) ===
                         {
                             echo "#### $name ($mode)"
@@ -2939,7 +2939,7 @@ run_trace_test() {
 
         done
     done
-
+    
     info "  └─ 路由追踪完成"
 }
 
@@ -2949,17 +2949,17 @@ run_trace_test() {
 # =========================
 run_forward_trace_test() {
     log "开始去程路由追踪..."
-
-    if [ "$NEXTTRACE_BIN" == "false" ] || [ -z "$NEXTTRACE_BIN" ]; then
-        warn "  └─ NextTrace 二进制未找到或下载失败，跳过";
-        return;
+    
+    if [ "$NEXTTRACE_BIN" == "false" ] || [ -z "$NEXTTRACE_BIN" ]; then 
+        warn "  └─ NextTrace 二进制未找到或下载失败，跳过"; 
+        return; 
     fi
-
+    
     if [ ! -x "$NEXTTRACE_BIN" ] && ! command -v "$NEXTTRACE_BIN" >/dev/null 2>&1; then
         warn "  └─ NextTrace ($NEXTTRACE_BIN) 不可执行，跳过";
         return;
     fi
-
+    
     # 获取本机公网 IPv4 地址
     local my_ipv4=""
     if [ "$HAS_V4" = "true" ]; then
@@ -2967,20 +2967,20 @@ run_forward_trace_test() {
                   curl -s4 --max-time 5 https://ipv4.icanhazip.com 2>/dev/null || \
                   curl -s4 --max-time 5 https://ifconfig.me 2>/dev/null)
     fi
-
+    
     if [ -z "$my_ipv4" ]; then
         warn "  └─ 无法获取本机公网 IPv4 地址，跳过去程路由追踪"
         return
     fi
-
+    
     info "  ├─ 目标 IP: $my_ipv4"
-
+    
     # 去程追踪源列表: 国家+ASN 组合
     # 格式: "显示名称|--from参数"
     # 下载去程追踪源列表
     local sources_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/forward_sources.txt"
     local sources_file="$TMP_DIR/forward_sources.txt"
-
+    
     echo "  ├─ 下载追踪源列表..."
     if ! retry_download "$sources_file" "$sources_url" "Forward Sources" "--connect-timeout 5 --max-time 10"; then
         warn "  │  └─ 下载失败，使用内置源"
@@ -2991,7 +2991,7 @@ run_forward_trace_test() {
 中国移动 CMNET|CN+AS9808
 FALLBACK_EOF
     fi
-
+    
     # 读取源列表到数组
     local forward_sources=()
     while IFS= read -r line; do
@@ -3001,14 +3001,14 @@ FALLBACK_EOF
         [[ "$line" =~ ^#$ ]] && continue
         forward_sources+=("$line")
     done < "$sources_file"
-
+    
     # 计算实际源数量（排除 #GROUP: 行）
     local total=0
     for src in "${forward_sources[@]}"; do
         [[ "$src" != "#GROUP:"* ]] && total=$((total+1))
     done
     local idx=0
-
+    
     # 写入报告头
     {
         echo "## 去程路由追踪"
@@ -3017,7 +3017,7 @@ FALLBACK_EOF
         echo "从全球各地追踪到本服务器 \`$masked_ip\`"
         echo ""
     } >> "$REPORT_FILE"
-
+    
     for source in "${forward_sources[@]}"; do
         # 处理分组标记
         if [[ "$source" == "#GROUP:"* ]]; then
@@ -3030,23 +3030,23 @@ FALLBACK_EOF
             } >> "$REPORT_FILE"
             continue
         fi
-
+        
         idx=$((idx+1))
         local name="${source%%|*}"
         local from_param="${source##*|}"
-
+        
         echo "  │  ├─ [$idx/$total] 从 $name 追踪..."
-
+        
         # 运行 nexttrace --from
         local raw_output=""
         local err_file="$TMP_DIR/nt_fwd_err_$idx.log"
         raw_output=$("$NEXTTRACE_BIN" --json --from "$from_param" "$my_ipv4" 2>"$err_file")
         local err_out=$(cat "$err_file" 2>/dev/null)
         rm -f "$err_file"
-
+        
         # 提取 JSON 部分
         local json=$(echo "$raw_output" | sed 's/^[^{]*//')
-
+        
         if [ -z "$json" ] || ! echo "$json" | jq -e . >/dev/null 2>&1; then
             echo "  │  └─ 失败: 无效输出"
             if [ -n "$err_out" ]; then
@@ -3055,11 +3055,11 @@ FALLBACK_EOF
             fi
             continue
         fi
-
+        
         # 解析 JSON 并生成表格
         local table="| 跳数 | IP | ASN | 位置 | 运营商 | 延迟 |\n"
         table+="|---:|:---|:---|:---|:---|---:|\n"
-
+        
         # 根据 NORMALIZE_OUTPUT 构建不同的 jq 查询
         local jq_loc_filter
         if [ "$NORMALIZE_OUTPUT" = "true" ]; then
@@ -3067,7 +3067,7 @@ FALLBACK_EOF
         else
             jq_loc_filter='map(select(. and . != ""))'
         fi
-
+        
         local rows=$(echo "$json" | jq -r '
             .Hops | to_entries[] |
             (.key + 1) as $hopnum |
@@ -3089,17 +3089,17 @@ FALLBACK_EOF
             else "-" end) as $rtt |
             [$hopnum, $ip, $asn, $loc, $isp, $rtt] | @tsv
         ' 2>/dev/null)
-
+        
         if [ -n "$rows" ]; then
             while IFS=$'\t' read -r ttl ip asn loc isp rtt; do
                 [ -z "$ip" ] && continue
                 [ "$ip" = "*" ] && ip="-"
-
+                
                 # 运营商名称规范化（仅在标准化输出模式下）
                 if [ "$NORMALIZE_OUTPUT" = "true" ]; then
                     isp=$(normalize_isp_name "$isp")
                 fi
-
+                
                 # RTT格式
                 if [ "$rtt" != "-" ] && [ -n "$rtt" ]; then
                     rtt_display="$rtt ms"
@@ -3108,9 +3108,9 @@ FALLBACK_EOF
                 fi
                 table+="| $ttl | $ip | $asn | $loc | $isp | $rtt_display |\n"
             done <<< "$rows"
-
+            
             echo "  │  └─ 追踪完成"
-
+            
             # 写入报告
             {
                 echo "#### $name"
@@ -3123,11 +3123,11 @@ FALLBACK_EOF
         else
             echo "  │  └─ 失败: 解析结果为空"
         fi
-
+        
         # 避免请求过快
         sleep 0.5
     done
-
+    
     info "  └─ 去程路由追踪完成"
 }
 
@@ -3140,19 +3140,19 @@ init_report() {
 
 main() {
     clear
-
+    
     # ASCII 艺术字
     echo -e "${GREEN}"
     cat <<'EOF'
-  _     _                    ____                  _
- | |   (_)_ __  _   ___  __ | __ )  ___ _ __   ___| |__
- | |   | | '_ \| | | \ \/ / |  _ \ / _ | '_ \ / __| '_ \
+  _     _                    ____                  _     
+ | |   (_)_ __  _   ___  __ | __ )  ___ _ __   ___| |__  
+ | |   | | '_ \| | | \ \/ / |  _ \ / _ | '_ \ / __| '_ \ 
  | |___| | | | | |_| |>  <  | |_) |  __| | | | (__| | | |
  |_____|_|_| |_|\__,_/_/\_\ |____/ \___|_| |_|\___|_| |_|
-
+                                                         
 EOF
     echo -e "${NC}"
-
+    
     # 提示用户可选参数
     echo -e "==> 欢迎使用 Lowendaff LinuxBench，这是一个综合的测试工具"
     echo -e "\n--- 可选测试模式："
@@ -3168,7 +3168,7 @@ EOF
     echo -e "      --skip-gb        跳过 Geekbench 6 性能测试"
     echo -e "      --fix-dns        强制覆盖系统 DNS（测试期间使用公共 DNS 解决网络查询超时问题）"
     echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
-
+    
     # 致谢
     echo -e "[*] 感谢 JamChoi 提供的 Python 源码"
     echo -e "[+] 由我（神秘人）驾驶着 Google Antigravity 进行改写和扩展"
@@ -3183,27 +3183,27 @@ EOF
     echo -e "[*] 关注我们的 Telegram 频道 https://t.me/lowendaff_blog"
     echo -e ""
     sleep 1
-
+    
     # Initialize Report
     init_report
     log "输出文件: $REPORT_FILE"
-
+    
     # Mode Log
-    if [ "$RUN_PUBLIC" = "true" ]; then
+    if [ "$RUN_PUBLIC" = "true" ]; then 
         log "${CYAN}模式: 仅公共服务测试 (-p)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ] && [ "$RUN_STREAM" = "true" ]; then
+    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ] && [ "$RUN_STREAM" = "true" ]; then 
         log "${CYAN}模式: 综合网络测试 (-n)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_STREAM" = "false" ]; then
+    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_STREAM" = "false" ]; then 
         log "${CYAN}模式: 速度测试 (--speedtest)${NC}"
-    elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
+    elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: 硬件性能测试 (-h)${NC}"
-    elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
+    elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: 回程路由追踪测试 (-t)${NC}"
-    elif [ "$RUN_FORWARD_TRACE" = "true" ]; then
+    elif [ "$RUN_FORWARD_TRACE" = "true" ]; then 
         log "${CYAN}模式: 去程路由追踪测试 (-f)${NC}"
-    elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_STREAM" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
+    elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_STREAM" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: IP 质量检测 (-i)${NC}"
-    elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_IP_QUALITY" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
+    elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_IP_QUALITY" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then 
         log "${CYAN}模式: 服务解锁测试 (-s)${NC}"
     else
         log "${CYAN}模式: 默认全能模式 (无参数)${NC}"
@@ -3214,7 +3214,7 @@ EOF
     elif [ "$SKIP_V4" = "true" ]; then
         log "${CYAN}限制: 仅运行 IPv6 测试 (-6)${NC}"
     fi
-
+    
     if [ "$FIX_DNS" = "true" ]; then
         mkdir -p "$TMP_DIR"
         if [ -f /etc/resolv.conf ]; then
@@ -3225,29 +3225,29 @@ EOF
     fi
 
     ensure_dependencies
-
+    
     collect_system_info
-
+    
     # 网络相关
     if [ "$RUN_NET_INFO" = "true" ]; then
         collect_network_info
     fi
-
+    
     # BGP 透视
     if [ "$RUN_BGP" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
         collect_bgp_view
     fi
-
+    
     # IP 质量检测
     if [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
         collect_ip_quality
     fi
-
+    
     # 服务解锁测试
     if [ "$RUN_STREAM" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
         run_stream_test
     fi
-
+    
     # 硬件性能测试
     if [ "$RUN_CPU" = "true" ]; then
         run_cpu_test
@@ -3255,33 +3255,33 @@ EOF
             run_gb6_test
         fi
     fi
-
+    
     if [ "$RUN_DISK" = "true" ]; then
         run_disk_test
     fi
-
+    
     # 网络性能测试
     if [ "$RUN_SPEEDTEST" = "true" ]; then
         run_iperf_test
         run_cloudflare_speedtest
         run_apple_speedtest
     fi
-
+    
     # 公共服务测试（只测公共服务，不测其他目标）
     if [ "$RUN_PUBLIC" = "true" ]; then
         run_trace_test "public_only"
     fi
-
+    
     # 路由追踪测试
     if [ "$RUN_TRACE" = "true" ]; then
         run_trace_test
     fi
-
+    
     # 去程路由追踪测试
     if [ "$RUN_FORWARD_TRACE" = "true" ]; then
         run_forward_trace_test
     fi
-
+    
     info "测试完成! 报告已保存至 $REPORT_FILE"
 }
 
