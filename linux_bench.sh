@@ -990,37 +990,21 @@ collect_bgp_view() {
     if [ "$SKIP_V4" = "false" ] && [ "$HAS_V4" = "true" ]; then
         echo "  ├─ 获取 IPv4 BGP 信息..."
         local v4_svg_url="${BGP_API_BASE}${NET_V4_IP}"
-        local v4_status=""
-        local bgp_v4_retry=0
-        local bgp_max_retry=3
-
-        while [ $bgp_v4_retry -lt $bgp_max_retry ]; do
-            v4_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$v4_svg_url" 2>/dev/null)
-            if [ "$v4_status" = "200" ]; then
-                break
-            fi
-            bgp_v4_retry=$((bgp_v4_retry + 1))
-            if [ $bgp_v4_retry -lt $bgp_max_retry ]; then
-                echo "  │  ├─ IPv4 BGP 获取失败，重试 ($bgp_v4_retry/$bgp_max_retry)..."
-                sleep 3
-            fi
-        done
-
-        if [ "$v4_status" = "200" ]; then
-            BGP_V4_URL="$v4_svg_url"
-            has_any_bgp=true
-            if [ "$SKIP_V6" = "true" ] || [ "$HAS_V6" != "true" ]; then
-                echo "  └─ IPv4 BGP 信息获取成功 ✓"
-            else
-                echo "  │  └─ IPv4 BGP 信息获取成功 ✓"
-            fi
+        echo "  │  ├─ 正在请求后端建立缓存 (最大等待 10s)..."
+        
+        # 触发后端缓存
+        if curl -s -o /dev/null --max-time 10 "$v4_svg_url" 2>/dev/null; then
+            echo "  │  ├─ 缓存建立请求成功"
         else
-            BGP_V4_URL=""
-            if [ "$SKIP_V6" = "true" ] || [ "$HAS_V6" != "true" ]; then
-                echo "  └─ IPv4 BGP 信息获取失败"
-            else
-                echo "  │  └─ IPv4 BGP 信息获取失败"
-            fi
+            echo "  │  ├─ 缓存建立超时或失败 (这不影响后续图片链接的生成)"
+        fi
+        
+        BGP_V4_URL="$v4_svg_url"
+        has_any_bgp=true
+        if [ "$SKIP_V6" = "true" ] || [ "$HAS_V6" != "true" ]; then
+            echo "  └─ IPv4 BGP 链接生成 ✓"
+        else
+            echo "  │  └─ IPv4 BGP 链接生成 ✓"
         fi
     fi
 
@@ -1028,29 +1012,18 @@ collect_bgp_view() {
     if [ "$SKIP_V6" = "false" ] && [ "$HAS_V6" = "true" ]; then
         echo "  └─ 获取 IPv6 BGP 信息..."
         local v6_svg_url="${BGP_API_BASE}${NET_V6_IP}"
-        local v6_status=""
-        local bgp_v6_retry=0
-
-        while [ $bgp_v6_retry -lt $bgp_max_retry ]; do
-            v6_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$v6_svg_url" 2>/dev/null)
-            if [ "$v6_status" = "200" ]; then
-                break
-            fi
-            bgp_v6_retry=$((bgp_v6_retry + 1))
-            if [ $bgp_v6_retry -lt $bgp_max_retry ]; then
-                echo "     ├─ IPv6 BGP 获取失败，重试 ($bgp_v6_retry/$bgp_max_retry)..."
-                sleep 3
-            fi
-        done
-
-        if [ "$v6_status" = "200" ]; then
-            BGP_V6_URL="$v6_svg_url"
-            has_any_bgp=true
-            echo "     └─ IPv6 BGP 信息获取成功 ✓"
+        echo "     ├─ 正在请求后端建立缓存 (最大等待 10s)..."
+        
+        # 触发后端缓存
+        if curl -s -o /dev/null --max-time 10 "$v6_svg_url" 2>/dev/null; then
+            echo "     ├─ 缓存建立请求成功"
         else
-            BGP_V6_URL=""
-            echo "     └─ IPv6 BGP 信息获取失败"
+            echo "     ├─ 缓存建立超时或失败 (这不影响后续图片链接的生成)"
         fi
+        
+        BGP_V6_URL="$v6_svg_url"
+        has_any_bgp=true
+        echo "     └─ IPv6 BGP 链接生成 ✓"
     fi
 
     # === 生成报告 ===
@@ -1623,23 +1596,43 @@ run_iperf_once() {
     echo "$ret"
 }
 
+get_iperf3_servers() {
+    local servers_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/iperf3_servers.txt"
+    local servers_file="$TMP_DIR/iperf3_servers.txt"
+
+    if ! retry_download "$servers_file" "$servers_url" "iPerf3 Servers" "--connect-timeout 5 --max-time 15"; then
+        warn "  Failed to download iPerf3 servers."
+        return
+    fi
+
+    locs=()
+    locs_cn=()
+    local current_group=""
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        # 忽略空行和注释行（除了 GROUP 标记）
+        if [[ -z "$line" ]]; then continue; fi
+        if [[ "$line" == "#GROUP:"* ]]; then
+            current_group="${line#*#GROUP:}"
+            continue
+        fi
+        if [[ "$line" == "#"* ]]; then continue; fi
+        
+        if [[ "$current_group" == "国际节点" ]]; then
+            locs+=("$line")
+        elif [[ "$current_group" == "国内节点" ]]; then
+            locs_cn+=("$line")
+        fi
+    done < "$servers_file"
+}
+
 run_iperf_test() {
     log "开始网络带宽测试..."
     if ! check_cmd iperf3; then warn "  └─ iperf3 未安装，跳过"; return; fi
 
-    local locs=(
-        "lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6"
-        "iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6"
-        "speedtest.uztelecom.uz|5200-5209|Uztelecom|Tashkent, UZ (10G)|IPv4|IPv6"
-        "speedtest.sin1.sg.leaseweb.net|5201-5210|Leaseweb|Singapore, SG (10G)|IPv4|IPv6"
-        "la.speedtest.clouvider.net|5200-5209|Clouvider|Los Angeles, CA, US (10G)|IPv4|IPv6"
-        "speedtest.nyc1.us.leaseweb.net|5201-5210|Leaseweb|NYC, NY, US (10G)|IPv4|IPv6"
-        "speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6"
-    )
-    local locs_cn=(
-        "14.119.118.214|5201|青毅云|深圳电信|IPv4"
-        "36.150.232.152|5201|青毅云|江苏移动|IPv4"
-    )
+    local locs=()
+    local locs_cn=()
+    get_iperf3_servers
 
     # === Streaming Report (Header) ===
     {

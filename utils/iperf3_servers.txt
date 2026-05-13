@@ -1,0 +1,14 @@
+#GROUP:国际节点
+iperf3-vie-at.alwyzon.net|5201-5208|Alwyzon|Vienna, AT (100G)|IPv4|IPv6
+speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6
+iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6
+speedtest.sin1.sg.leaseweb.net|5201-5210|Leaseweb|Singapore, SG (10G)|IPv4|IPv6
+lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6
+iperf-mci.advinservers.com|5201-5240|Advin Servers|Kansas City, MO (40G)|IPv4|IPv6
+la.speedtest.clouvider.net|5200-5209|Clouvider|Los Angeles, CA, US (10G)|IPv4|IPv6
+speedtest.nyc1.us.leaseweb.net|5201-5210|Leaseweb|NYC, NY, US (10G)|IPv4|IPv6
+speedtest.uztelecom.uz|5200-5209|Uztelecom|Tashkent, UZ (10G)|IPv4|IPv6
+
+#GROUP:国内节点
+14.119.118.214|5201|青毅云|深圳电信|IPv4
+36.150.232.152|5201|青毅云|江苏移动|IPv4
