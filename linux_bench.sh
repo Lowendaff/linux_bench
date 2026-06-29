@@ -54,177 +54,124 @@ TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/linux_bench.XXXXXX")"
 # 清理列表 (记录新安装的依赖，以便脚本结束时清理)
 CLEANUP_PKGS=()
 
-# 运行模式标志
-RUN_NET_INFO=true
-RUN_BGP=true
-RUN_IP_QUALITY=true
-RUN_STREAM=true
-RUN_CPU=true
-RUN_DISK=true
-RUN_SPEEDTEST=true
-RUN_PUBLIC=false
-RUN_TRACE=true
-RUN_FORWARD_TRACE=true
+# 运行开关:默认全部开启,用 --skip-xxx 关闭单项功能(解析见 parse_args / --help)
+RUN_SYSINFO=true        # 系统信息
+RUN_NET_INFO=true       # 网络信息(IP/ASN/地理) —— 多数网络功能的前置
+RUN_BGP=true            # BGP 透视
+RUN_IP_QUALITY=true     # IP 质量检测
+RUN_STREAM=true         # 服务解锁(流媒体/AIGC)
+RUN_CPU=true            # CPU (sysbench)
+RUN_GB=true             # Geekbench 6
+RUN_DISK=true           # 磁盘 (fio)
+RUN_IPERF=true          # iperf3 带宽
+RUN_CF=true             # Cloudflare 测速
+RUN_APPLE=true          # Apple CDN 测速
+RUN_TRACE=true          # 回程路由追踪
+RUN_FORWARD_TRACE=true  # 去程路由追踪
+
+# 修饰开关
 SKIP_V4=false
 SKIP_V6=false
-NORMALIZE_OUTPUT=false  # 是否进行数据标准化（地名去后缀、运营商名统一）
-RAW_OUTPUT=true  # 默认输出原始未标准化的数据
-SKIP_GB=false    # 是否跳过 Geekbench 6 测试
-FIX_DNS=false    # 是否强制覆盖 DNS
+NORMALIZE_OUTPUT=false  # 数据标准化(地名去后缀、运营商名统一)
+RAW_OUTPUT=true         # 默认输出原始未标准化数据
+FIX_DNS=false           # 强制覆盖 DNS
 
 # DNS 覆盖状态(用于精确恢复)
 DNS_OVERRIDE_APPLIED=false
 DNS_ORIG_WAS_SYMLINK=false
 DNS_ORIG_SYMLINK_TARGET=""
 
-# 报告名称前缀 (根据参数动态设置)
-REPORT_PREFIX="report"
+# 报告文件名
+REPORT_FILE="bench_report_$(date +%Y%m%d_%H%M%S).md"
 
-# 参数解析
-for arg in "$@"; do
-    case $arg in
-        --network|-n)
-            RUN_NET_INFO=true
-            RUN_BGP=true
-            RUN_IP_QUALITY=true
-            RUN_STREAM=true
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=true
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="network"
-            shift
-            ;;
-        --hardware|-h)
-            RUN_NET_INFO=false
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=false
-            RUN_CPU=true
-            RUN_DISK=true
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="hardware"
-            shift
-            ;;
-        --nexttrace|-t)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=false
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=false
-            RUN_TRACE=true
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="trace"
-            shift
-            ;;
-        --ip-quality|-i)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=true
-            RUN_STREAM=false
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="ip"
-            shift
-            ;;
-        --service|-s)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=true
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="service"
-            shift
-            ;;
-        --public|-p)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=false
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=true
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="public"
-            shift
-            ;;
-        --forward|-f)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=false
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=false
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=true
-            REPORT_PREFIX="forward"
-            shift
-            ;;
-        --speedtest)
-            RUN_NET_INFO=true
-            RUN_BGP=false
-            RUN_IP_QUALITY=false
-            RUN_STREAM=false
-            RUN_CPU=false
-            RUN_DISK=false
-            RUN_SPEEDTEST=true
-            RUN_PUBLIC=false
-            RUN_TRACE=false
-            RUN_FORWARD_TRACE=false
-            REPORT_PREFIX="speedtest"
-            shift
-            ;;
-        -4)
-            SKIP_V6=true
-            shift
-            ;;
-        -6)
-            SKIP_V4=true
-            shift
-            ;;
-        --raw)
-            RAW_OUTPUT=true
-            NORMALIZE_OUTPUT=false
-            shift
-            ;;
-        --normalize)
-            NORMALIZE_OUTPUT=true
-            shift
-            ;;
-        --skip-gb)
-            SKIP_GB=true
-            shift
-            ;;
-        --fix-dns)
-            FIX_DNS=true
-            shift
-            ;;
-    esac
-done
+# 用法说明
+print_usage() {
+    cat <<'USAGE'
+用法: linux_bench.sh [选项]
 
-# 生成报告文件名 (参数解析后)
-REPORT_FILE="bench_${REPORT_PREFIX}_$(date +%Y%m%d_%H%M%S).md"
+默认运行全部测试。用 --skip-xxx 关闭单项功能(可叠加,顺序无关)。
+
+功能开关(默认全开):
+  --skip-sysinfo       跳过 系统信息
+  --skip-netinfo       跳过 网络信息(会级联关闭依赖它的网络项)
+  --skip-bgp           跳过 BGP 透视
+  --skip-ip-quality    跳过 IP 质量检测
+  --skip-service       跳过 服务解锁(流媒体/AIGC)
+  --skip-cpu           跳过 CPU 测试(sysbench)
+  --skip-gb            跳过 Geekbench 6
+  --skip-disk          跳过 磁盘测试(fio)
+  --skip-iperf         跳过 iperf3 带宽测试
+  --skip-cloudflare    跳过 Cloudflare 测速
+  --skip-apple         跳过 Apple CDN 测速
+  --skip-trace         跳过 回程路由追踪
+  --skip-forward       跳过 去程路由追踪
+  --skip-hardware      跳过 全部硬件测试(= cpu + gb + disk)
+  --skip-speedtest     跳过 全部测速(= iperf + cloudflare + apple)
+
+修饰选项:
+  -4                   仅 IPv4
+  -6                   仅 IPv6
+  --raw                原始输出(默认)
+  --normalize          标准化输出(地名去后缀、运营商名统一)
+  --fix-dns            测试期间临时覆盖系统 DNS
+  -h, --help           显示本帮助并退出
+
+示例:
+  linux_bench.sh                                       # 全部
+  linux_bench.sh --skip-gb                             # 全部但跳过最慢的 Geekbench
+  linux_bench.sh --skip-speedtest --skip-trace --skip-forward
+  linux_bench.sh -4 --skip-gb                          # 仅 IPv4 + 跳过 GB
+USAGE
+}
+
+# 参数解析:默认全开,--skip-xxx 关单项;顺序无关(在 main 中调用)
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-sysinfo)    RUN_SYSINFO=false ;;
+            --skip-netinfo)    RUN_NET_INFO=false ;;
+            --skip-bgp)        RUN_BGP=false ;;
+            --skip-ip-quality) RUN_IP_QUALITY=false ;;
+            --skip-service)    RUN_STREAM=false ;;
+            --skip-cpu)        RUN_CPU=false ;;
+            --skip-gb)         RUN_GB=false ;;
+            --skip-disk)       RUN_DISK=false ;;
+            --skip-iperf)      RUN_IPERF=false ;;
+            --skip-cloudflare) RUN_CF=false ;;
+            --skip-apple)      RUN_APPLE=false ;;
+            --skip-trace)      RUN_TRACE=false ;;
+            --skip-forward)    RUN_FORWARD_TRACE=false ;;
+            --skip-hardware)   RUN_CPU=false; RUN_GB=false; RUN_DISK=false ;;
+            --skip-speedtest)  RUN_IPERF=false; RUN_CF=false; RUN_APPLE=false ;;
+            -4)                SKIP_V6=true ;;
+            -6)                SKIP_V4=true ;;
+            --raw)             RAW_OUTPUT=true; NORMALIZE_OUTPUT=false ;;
+            --normalize)       NORMALIZE_OUTPUT=true; RAW_OUTPUT=false ;;
+            --fix-dns)         FIX_DNS=true ;;
+            -h|--help)         print_usage; exit 0 ;;
+            # 已移除的旧「套餐」flag —— 给出迁移提示
+            -n|--network|--hardware|-t|--nexttrace|-i|--ip-quality|-s|--service|-f|--forward|-p|--public|--speedtest)
+                fail "选项 '$1' 已移除:现在默认运行全部测试,请改用 --skip-xxx 关闭单项。见 --help。"
+                exit 1
+                ;;
+            *)
+                fail "未知选项: '$1'。见 --help。"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    # 级联:网络信息是 BGP/IP质量/服务解锁/iperf/回程/去程的前置(它们需要 HAS_V4/V6 或本机 IP)
+    if [ "$RUN_NET_INFO" = "false" ]; then
+        RUN_BGP=false
+        RUN_IP_QUALITY=false
+        RUN_STREAM=false
+        RUN_IPERF=false
+        RUN_TRACE=false
+        RUN_FORWARD_TRACE=false
+    fi
+}
 
 # 颜色
 RED='\033[0;31m'
@@ -490,14 +437,10 @@ ensure_dependencies() {
 
     local target_pkgs="curl jq tar xz-utils"
 
-    # 根据 Flag 添加依赖
-    if [ "$RUN_CPU" = "true" ] || [ "$RUN_DISK" = "true" ]; then
-        target_pkgs="$target_pkgs sysbench fio"
-    fi
-
-    if [ "$RUN_SPEEDTEST" = "true" ]; then
-        target_pkgs="$target_pkgs iperf3"
-    fi
+    # 根据开关添加依赖(各功能独立)
+    [ "$RUN_CPU" = "true" ] && target_pkgs="$target_pkgs sysbench"
+    [ "$RUN_DISK" = "true" ] && target_pkgs="$target_pkgs fio"
+    [ "$RUN_IPERF" = "true" ] && target_pkgs="$target_pkgs iperf3"
 
     local missing_pkgs=""
     local installed_pkgs=""
@@ -565,24 +508,19 @@ ensure_dependencies() {
     # 预判需要下载的临时工具
     local ephemeral_tools=""
 
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         ephemeral_tools="$ephemeral_tools nexttrace"
     fi
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
-        ephemeral_tools="$ephemeral_tools yt-dlp"
-    fi
-    if [ "$RUN_SPEEDTEST" = "true" ]; then
-        ephemeral_tools="$ephemeral_tools cf-speed inetspeed"
-    fi
-    if [ "$RUN_CPU" = "true" ] && [ "$SKIP_GB" = "false" ]; then
-        ephemeral_tools="$ephemeral_tools geekbench6"
-    fi
+    [ "$RUN_TRACE" = "true" ] && ephemeral_tools="$ephemeral_tools yt-dlp"
+    [ "$RUN_CF" = "true" ] && ephemeral_tools="$ephemeral_tools cf-speed"
+    [ "$RUN_APPLE" = "true" ] && ephemeral_tools="$ephemeral_tools inetspeed"
+    [ "$RUN_GB" = "true" ] && ephemeral_tools="$ephemeral_tools geekbench6"
 
     # 输出临时工具列表
     [ -n "$ephemeral_tools" ] && info "下载临时工具:$ephemeral_tools"
 
-    # 实际下载 - NextTrace (回程/公共服务/去程追踪都需要)
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
+    # 实际下载 - NextTrace (回程/去程追踪需要)
+    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_FORWARD_TRACE" = "true" ]; then
         local arch=$(uname -m)
         local url=""
         [ "$arch" == "x86_64" ] && url="https://github.com/nxtrace/NTrace-core/releases/latest/download/nexttrace_linux_amd64"
@@ -603,8 +541,8 @@ ensure_dependencies() {
         export NEXTTRACE_BIN="false"
     fi
 
-    # 实际下载 - yt-dlp (仅回程/公共服务追踪需要，用于获取 YouTube CDN)
-    if [ "$RUN_TRACE" = "true" ] || [ "$RUN_PUBLIC" = "true" ]; then
+    # 实际下载 - yt-dlp (仅回程追踪需要，用于获取 YouTube CDN)
+    if [ "$RUN_TRACE" = "true" ]; then
         echo -n "  ├─ 正在下载 yt-dlp..."
         if retry_download "$TMP_DIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" "yt-dlp"; then
             chmod +x "$TMP_DIR/yt-dlp"
@@ -619,7 +557,7 @@ ensure_dependencies() {
     fi
 
     # 实际下载 - Cloudflare Speedtest CLI
-    if [ "$RUN_SPEEDTEST" = "true" ]; then
+    if [ "$RUN_CF" = "true" ]; then
         local arch=$(uname -m)
         local cf_url_primary=""
         local cf_url_fallback=""
@@ -681,7 +619,7 @@ ensure_dependencies() {
     fi
 
     # 实际下载 - iNetSpeed-CLI (Apple CDN Speedtest)
-    if [ "$RUN_SPEEDTEST" = "true" ]; then
+    if [ "$RUN_APPLE" = "true" ]; then
         local arch=$(uname -m)
         local inetspeed_url=""
         case "$arch" in
@@ -713,7 +651,7 @@ ensure_dependencies() {
     fi
 
     # 实际下载 - Geekbench 6 (有进度提示)
-    if [ "$RUN_CPU" = "true" ] && [ "$SKIP_GB" = "false" ]; then
+    if [ "$RUN_GB" = "true" ]; then
         local arch=$(uname -m)
         local gb6_version="6.5.0"
         local gb6_url_primary=""
@@ -3259,6 +3197,7 @@ init_report() {
 }
 
 main() {
+    parse_args "$@"
     preflight_checks
     clear
 
@@ -3274,21 +3213,15 @@ main() {
 EOF
     echo -e "${NC}"
 
-    # 提示用户可选参数
+    # 提示
     echo -e "==> 欢迎使用 Lowendaff LinuxBench，这是一个综合的测试工具"
-    echo -e "\n--- 可选测试模式："
-    echo -e "  -n, --network       综合网络测试 (包含: 基础网络信息、BGP透视、IP质量检测、服务解锁、Speedtest测速)"
-    echo -e "  -h, --hardware      硬件性能测试 (包含: CPU Benchmark、内存、磁盘IO)"
-    echo -e "  -t, --nexttrace     回程路由追踪 (包含: 从本服务器到全球目标的路由追踪)"
-    echo -e "  -f, --forward       去程路由追踪 (包含: 从全球各地(三大运营商等)到本服务器的路由追踪)"
-    echo -e "  -p, --public        公共服务 (包含: 仅对 Google/Cloudflare DNS 等公共节点进行路由追踪)"
-    echo -e "  -i, --ip-quality    IP 质量检测 (包含: IP欺诈值、风险评分、流媒体解锁详情)"
-    echo -e "  -s, --service       服务解锁 (包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测)"
-    echo -e "  -4                  仅进行 IPv4 测试 (强制仅使用 IPv4 协议)"
-    echo -e "      --speedtest      速度测试 (包含: iperf3 带宽测试、Cloudflare 测速、Apple CDN 测速)"
-    echo -e "      --skip-gb        跳过 Geekbench 6 性能测试"
-    echo -e "      --fix-dns        强制覆盖系统 DNS（测试期间使用公共 DNS 解决网络查询超时问题）"
-    echo -e "  -6                  仅进行 IPv6 测试 (强制仅使用 IPv6 协议)\n"
+    echo -e "\n--- 默认运行全部测试;用 --skip-xxx 关闭单项,例如:"
+    echo -e "      --skip-gb        跳过最慢的 Geekbench 6"
+    echo -e "      --skip-speedtest 跳过全部测速 (iperf3 + Cloudflare + Apple)"
+    echo -e "      --skip-trace --skip-forward   跳过路由追踪"
+    echo -e "  -4 / -6              仅 IPv4 / 仅 IPv6"
+    echo -e "      --fix-dns        测试期间临时覆盖系统 DNS"
+    echo -e "  -h, --help           查看完整选项列表\n"
 
     # 致谢
     echo -e "[*] 感谢 JamChoi 提供的 Python 源码"
@@ -3309,25 +3242,24 @@ EOF
     init_report
     log "输出文件: $REPORT_FILE"
 
-    # Mode Log
-    if [ "$RUN_PUBLIC" = "true" ]; then
-        log "${CYAN}模式: 仅公共服务测试 (-p)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_CPU" = "false" ] && [ "$RUN_STREAM" = "true" ]; then
-        log "${CYAN}模式: 综合网络测试 (-n)${NC}"
-    elif [ "$RUN_SPEEDTEST" = "true" ] && [ "$RUN_STREAM" = "false" ]; then
-        log "${CYAN}模式: 速度测试 (--speedtest)${NC}"
-    elif [ "$RUN_CPU" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
-        log "${CYAN}模式: 硬件性能测试 (-h)${NC}"
-    elif [ "$RUN_TRACE" = "true" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
-        log "${CYAN}模式: 回程路由追踪测试 (-t)${NC}"
-    elif [ "$RUN_FORWARD_TRACE" = "true" ]; then
-        log "${CYAN}模式: 去程路由追踪测试 (-f)${NC}"
-    elif [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_STREAM" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
-        log "${CYAN}模式: IP 质量检测 (-i)${NC}"
-    elif [ "$RUN_STREAM" = "true" ] && [ "$RUN_IP_QUALITY" = "false" ] && [ "$RUN_SPEEDTEST" = "false" ]; then
-        log "${CYAN}模式: 服务解锁测试 (-s)${NC}"
-    else
-        log "${CYAN}模式: 默认全能模式 (无参数)${NC}"
+    # 已启用功能概览
+    local _enabled=""
+    [ "$RUN_SYSINFO" = "true" ]       && _enabled+=" 系统信息"
+    [ "$RUN_NET_INFO" = "true" ]      && _enabled+=" 网络信息"
+    [ "$RUN_BGP" = "true" ]           && _enabled+=" BGP"
+    [ "$RUN_IP_QUALITY" = "true" ]    && _enabled+=" IP质量"
+    [ "$RUN_STREAM" = "true" ]        && _enabled+=" 服务解锁"
+    [ "$RUN_CPU" = "true" ]           && _enabled+=" CPU"
+    [ "$RUN_GB" = "true" ]            && _enabled+=" Geekbench"
+    [ "$RUN_DISK" = "true" ]          && _enabled+=" 磁盘"
+    [ "$RUN_IPERF" = "true" ]         && _enabled+=" iperf3"
+    [ "$RUN_CF" = "true" ]            && _enabled+=" Cloudflare测速"
+    [ "$RUN_APPLE" = "true" ]         && _enabled+=" Apple测速"
+    [ "$RUN_TRACE" = "true" ]         && _enabled+=" 回程追踪"
+    [ "$RUN_FORWARD_TRACE" = "true" ] && _enabled+=" 去程追踪"
+    log "${CYAN}已启用:${_enabled:- (无)}${NC}"
+    if [ "$RUN_NET_INFO" = "false" ]; then
+        warn "已跳过网络信息(--skip-netinfo):BGP / IP质量 / 服务解锁 / iperf / 回程 / 去程 已一并跳过"
     fi
 
     if [ "$SKIP_V6" = "true" ]; then
@@ -3345,61 +3277,20 @@ EOF
 
     ensure_dependencies
 
-    collect_system_info
-
-    # 网络相关
-    if [ "$RUN_NET_INFO" = "true" ]; then
-        collect_network_info
-    fi
-
-    # BGP 透视
-    if [ "$RUN_BGP" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
-        collect_bgp_view
-    fi
-
-    # IP 质量检测
-    if [ "$RUN_IP_QUALITY" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
-        collect_ip_quality
-    fi
-
-    # 服务解锁测试
-    if [ "$RUN_STREAM" = "true" ] && [ "$RUN_NET_INFO" = "true" ]; then
-        run_stream_test
-    fi
-
-    # 硬件性能测试
-    if [ "$RUN_CPU" = "true" ]; then
-        run_cpu_test
-        if [ "$SKIP_GB" = "false" ]; then
-            run_gb6_test
-        fi
-    fi
-
-    if [ "$RUN_DISK" = "true" ]; then
-        run_disk_test
-    fi
-
-    # 网络性能测试
-    if [ "$RUN_SPEEDTEST" = "true" ]; then
-        run_iperf_test
-        run_cloudflare_speedtest
-        run_apple_speedtest
-    fi
-
-    # 公共服务测试（只测公共服务，不测其他目标）
-    if [ "$RUN_PUBLIC" = "true" ]; then
-        run_trace_test "public_only"
-    fi
-
-    # 路由追踪测试
-    if [ "$RUN_TRACE" = "true" ]; then
-        run_trace_test
-    fi
-
-    # 去程路由追踪测试
-    if [ "$RUN_FORWARD_TRACE" = "true" ]; then
-        run_forward_trace_test
-    fi
+    # 各功能按开关运行(默认全开,--skip-xxx 关闭单项;netinfo 级联已在 parse_args 处理)
+    if [ "$RUN_SYSINFO" = "true" ]; then collect_system_info; fi
+    if [ "$RUN_NET_INFO" = "true" ]; then collect_network_info; fi
+    if [ "$RUN_BGP" = "true" ]; then collect_bgp_view; fi
+    if [ "$RUN_IP_QUALITY" = "true" ]; then collect_ip_quality; fi
+    if [ "$RUN_STREAM" = "true" ]; then run_stream_test; fi
+    if [ "$RUN_CPU" = "true" ]; then run_cpu_test; fi
+    if [ "$RUN_GB" = "true" ]; then run_gb6_test; fi
+    if [ "$RUN_DISK" = "true" ]; then run_disk_test; fi
+    if [ "$RUN_IPERF" = "true" ]; then run_iperf_test; fi
+    if [ "$RUN_CF" = "true" ]; then run_cloudflare_speedtest; fi
+    if [ "$RUN_APPLE" = "true" ]; then run_apple_speedtest; fi
+    if [ "$RUN_TRACE" = "true" ]; then run_trace_test; fi
+    if [ "$RUN_FORWARD_TRACE" = "true" ]; then run_forward_trace_test; fi
 
     info "测试完成! 报告已保存至 $REPORT_FILE"
 }
