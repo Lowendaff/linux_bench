@@ -2672,13 +2672,7 @@ FALLBACK_EOF
 }
 
 run_trace_test() {
-    local public_only="${1:-false}"  # 如果传入 "public_only"，则只测公共服务
-
-    if [ "$public_only" = "public_only" ]; then
-        log "开始公共服务路由追踪..."
-    else
-        log "开始路由追踪测试..."
-    fi
+    log "开始路由追踪测试..."
 
     # 调试信息
     # log "NextTrace Binary: $NEXTTRACE_BIN"
@@ -2776,21 +2770,19 @@ run_trace_test() {
         done <<< "$public_targets"
     fi
 
-    # 然后读取静态目标，处理分组标记（仅在完整模式下）
-    if [ "$public_only" != "public_only" ]; then
-        while IFS= read -r line; do
-            if [ -z "$line" ]; then
-                continue
-            elif [[ "$line" == "#GROUP:"* ]]; then
-                # 从分组标记中提取组名
-                current_group="${line#\#GROUP:}"
-                # 将分组标记添加到目标数组中
-                all_targets+=("#GROUP:$current_group")
-            else
-                all_targets+=("$line")
-            fi
-        done <<< "$raw_static"
-    fi
+    # 然后读取静态目标，处理分组标记
+    while IFS= read -r line; do
+        if [ -z "$line" ]; then
+            continue
+        elif [[ "$line" == "#GROUP:"* ]]; then
+            # 从分组标记中提取组名
+            current_group="${line#\#GROUP:}"
+            # 将分组标记添加到目标数组中
+            all_targets+=("#GROUP:$current_group")
+        else
+            all_targets+=("$line")
+        fi
+    done <<< "$raw_static"
 
     local idx=0
     local total=0
