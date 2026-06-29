@@ -328,14 +328,30 @@ setup_nexttrace_token() {
     fi
 }
 
+# 计算文件 sha256(优先 sha256sum,回退 shasum -a 256)
+_sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" 2>/dev/null | awk '{print $1}'
+    else
+        shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+    fi
+}
+
 # 通用重试下载函数
-# 参数: $1=输出文件, $2=URL, $3=描述名称(可选), $4=额外curl参数(可选)
+# 参数: $1=输出文件, $2=URL, $3=描述名称(可选), $4=额外curl参数(可选,字符串兼容旧调用)
 # 重试策略: 3次重试，间隔分别为5秒、10秒、30秒
 retry_download() {
     local output_file="$1"
     local url="$2"
     local name="${3:-文件}"
-    local extra_args="$4"
+    # extra_args 兼容旧的"字符串"调用,内部转数组,避免未引用词分割隐患。
+    # 将固定参数与可选参数合并为一个数组,避免在 bash 3.2 + set -u 下空数组展开报错。
+    local -a curl_args=(-f -L -s)
+    if [ -n "${4:-}" ]; then
+        local -a _extra=()
+        read -r -a _extra <<< "${4}"
+        curl_args+=("${_extra[@]}")
+    fi
 
     local retry_delays=(5 10 30)
     local max_retries=3
@@ -344,7 +360,7 @@ retry_download() {
     while [ $attempt -le $max_retries ]; do
         if [ $attempt -eq 0 ]; then
             # 第一次尝试
-            if curl -f -L -s $extra_args -o "$output_file" "$url" 2>/dev/null; then
+            if curl "${curl_args[@]}" -o "$output_file" "$url" 2>/dev/null; then
                 return 0
             fi
         else
@@ -353,7 +369,7 @@ retry_download() {
             echo -e " ${YELLOW}重试 ($attempt/$max_retries, ${delay}秒后)${NC}"
             sleep $delay
             echo -n "  │  ├─ 重试下载 $name..."
-            if curl -f -L -s $extra_args -o "$output_file" "$url" 2>/dev/null; then
+            if curl "${curl_args[@]}" -o "$output_file" "$url" 2>/dev/null; then
                 return 0
             fi
         fi
@@ -361,6 +377,30 @@ retry_download() {
     done
 
     return 1
+}
+
+# 带 sha256 校验的下载。expected 为空则直接失败(强制调用方提供哈希)。
+# 用法: download_and_verify <url> <out> <sha256> [name] [curl额外参数字符串]
+download_and_verify() {
+    local url="$1" out="$2" expected="$3" name="${4:-文件}" extra="${5:-}"
+
+    if [ -z "$expected" ]; then
+        fail "  └─ 缺少 $name 的期望 sha256,拒绝执行未校验的下载"
+        return 1
+    fi
+
+    if ! retry_download "$out" "$url" "$name" "$extra"; then
+        return 1
+    fi
+
+    local actual
+    actual="$(_sha256 "$out")"
+    if [ "$actual" != "$expected" ]; then
+        fail "  └─ $name 校验失败:期望 $expected,实际 ${actual:-<空>}"
+        rm -f "$out" 2>/dev/null || true
+        return 1
+    fi
+    return 0
 }
 
 # =========================
