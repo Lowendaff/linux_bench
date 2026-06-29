@@ -3,6 +3,8 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/assert.sh"
 source "$HERE/../linux_bench.sh" 2>/dev/null
+# 清理 source 脚本时创建的临时目录(本测试随后覆盖 EXIT trap,否则会泄漏空目录)
+[ -n "${TMP_DIR:-}" ] && rm -rf "$TMP_DIR" 2>/dev/null
 
 FIX="$HERE/fixtures/sample.bin"
 TMP_OUT="$(mktemp)"
