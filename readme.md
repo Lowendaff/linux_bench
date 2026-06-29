@@ -65,82 +65,63 @@ bash <(curl -L -s bench.lowendaff.com)
 > bash <(curl -L -s bench.lowendaff.com) --skip-gb
 > ```
 
-### 2. 指定模式运行
+### 2. 按需跳过功能（`--skip-xxx`）
 
-跳过交互菜单，直接运行特定模块：
+**默认运行全部测试**。用 `--skip-xxx` 关闭单项功能，可叠加、顺序无关。
 
-* **综合网络测试** (`-n`, `--network`)
-  * 包含: 基础网络信息、BGP透视、IP质量检测、服务解锁、Speedtest测速
-  ```bash
-  sudo ./linux_bench.sh -n
-  ```
+| 开关 | 关闭的功能 |
+| :--- | :--- |
+| `--skip-sysinfo` | 系统信息 |
+| `--skip-netinfo` | 网络信息（会**级联**关闭依赖它的网络项） |
+| `--skip-bgp` | BGP 透视 |
+| `--skip-ip-quality` | IP 质量检测 |
+| `--skip-service` | 服务解锁（流媒体 / AIGC） |
+| `--skip-cpu` | CPU 测试（sysbench） |
+| `--skip-gb` | Geekbench 6 |
+| `--skip-disk` | 磁盘测试（fio） |
+| `--skip-iperf` | iperf3 带宽测试 |
+| `--skip-cloudflare` | Cloudflare CDN 测速 |
+| `--skip-apple` | Apple CDN 测速 |
+| `--skip-trace` | 回程路由追踪 |
+| `--skip-forward` | 去程路由追踪 |
+| `--skip-hardware` | 全部硬件测试（= cpu + gb + disk） |
+| `--skip-speedtest` | 全部测速（= iperf + cloudflare + apple） |
 
-* **硬件性能测试** (`-h`, `--hardware`)
-  * 包含: CPU Benchmark、内存、磁盘IO
-  ```bash
-  sudo ./linux_bench.sh -h
-  ```
+示例：
 
-* **回程路由追踪** (`-t`, `--nexttrace`)
-  * 包含: 从本服务器到全球目标（中国三网、国际运营商等）的路由追踪
-  ```bash
-  sudo ./linux_bench.sh -t
-  ```
+```bash
+sudo ./linux_bench.sh                                      # 全部
+sudo ./linux_bench.sh --skip-gb                            # 全部但跳过最慢的 Geekbench
+sudo ./linux_bench.sh --skip-speedtest --skip-trace --skip-forward   # 不测速、不追踪
+sudo ./linux_bench.sh --skip-netinfo                      # 关网络信息（级联），只剩硬件 + cf/apple
+```
 
-* **去程路由追踪** (`-f`, `--forward`)
-  * 包含: 从全球各地（中国三大运营商、亚太、欧美等）到本服务器的路由追踪
-  ```bash
-  sudo ./linux_bench.sh -f
-  ```
+> ⚠️ 旧的「套餐」flag（`-n` `-h`(硬件) `-t` `-i` `-s` `-f` `-p` `--speedtest`）已移除：现在默认全开，请改用 `--skip-xxx` 关单项；传入旧 flag 会报错并提示。**`-h` 现在是 `--help`**。
 
-* **公共服务** (`-p`, `--public`)
-  * 包含: 仅对 Google/Cloudflare DNS 等公共节点进行路由追踪
-  ```bash
-  sudo ./linux_bench.sh -p
-  ```
-
-* **IP 质量检测** (`-i`, `--ip-quality`)
-  * 包含: IP欺诈值、风险评分、流媒体解锁详情
-  ```bash
-  sudo ./linux_bench.sh -i
-  ```
-
-* **服务解锁** (`-s`, `--service`)
-  * 包含: Netflix、Disney+ 等流媒体及 AIGC/GPT 解锁检测
-  ```bash
-  sudo ./linux_bench.sh -s
-  ```
-
-* **速度测试** (`--speedtest`)
-  * 包含: iperf3 带宽测试、Cloudflare CDN 测速、Apple CDN 测速
-  ```bash
-  sudo ./linux_bench.sh --speedtest
-  ```
-
-* **跳过 Geekbench 测试** (`--skip-gb`)
-  * 跳过耗时较长的 Geekbench 6 跑分（适用于全能模式或配合 `-h` 硬件测试使用）
-  ```bash
-  sudo ./linux_bench.sh --skip-gb
-  ```
+### 3. 修饰选项
 
 * **强制 IP 版本** (`-4`, `-6`)
-  * 强制仅使用 IPv4 或 IPv6 协议
   ```bash
-  sudo ./linux_bench.sh -n -4  # 仅 IPv4 网络测试
-  sudo ./linux_bench.sh -s -6  # 仅 IPv6 解锁测试
+  sudo ./linux_bench.sh -4              # 仅 IPv4
+  sudo ./linux_bench.sh -6 --skip-gb   # 仅 IPv6 + 跳过 GB
   ```
 
 * **修复 DNS** (`--fix-dns`)
-  * 强制覆盖系统 DNS（测试期间临时使用公共 DNS 解决部分节点网络查询超时的问题）
+  * 测试期间临时覆盖系统 DNS（解决部分节点网络查询超时；结束时自动恢复）
   ```bash
   sudo ./linux_bench.sh --fix-dns
   ```
 
 * **数据输出格式** (`--raw`, `--normalize`)
-  * `--raw`：默认输出原始未标准化的数据
-  * `--normalize`：对输出进行数据标准化处理（如地名去后缀、运营商名称统一）
+  * `--raw`：原始未标准化数据（默认）
+  * `--normalize`：标准化处理（地名去后缀、运营商名称统一）
   ```bash
-  sudo ./linux_bench.sh -n --normalize
+  sudo ./linux_bench.sh --normalize
+  ```
+
+* **帮助** (`-h`, `--help`)
+  ```bash
+  sudo ./linux_bench.sh --help
   ```
 
 ## 📂 核心功能与目录结构
