@@ -44,7 +44,7 @@ preflight_checks() {
 # =========================
 # 配置 & 全局变量
 # =========================
-TMP_DIR="./tmp_bench_$(date +%s)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/linux_bench.XXXXXX")"
 
 # 清理列表 (记录新安装的依赖，以便脚本结束时清理)
 CLEANUP_PKGS=()
