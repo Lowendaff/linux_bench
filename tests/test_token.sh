@@ -4,6 +4,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/assert.sh"
 source "$HERE/../linux_bench.sh" 2>/dev/null
 
+# 0) setup_nexttrace_token 函数必须已定义
+assert_success bash -c "source '$HERE/../linux_bench.sh' 2>/dev/null && declare -F setup_nexttrace_token >/dev/null"
+
 # 1) 用户提供的 token 必须被保留
 export NEXTTRACE_TOKEN="user-provided-token"
 setup_nexttrace_token

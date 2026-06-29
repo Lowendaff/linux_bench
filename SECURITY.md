@@ -7,5 +7,7 @@
 - 现在 NextTrace token 仅通过环境变量 `NEXTTRACE_TOKEN` 提供（可选）。
 
 ## 下载完整性
-- 所有外部二进制/脚本下载均经 `download_and_verify`，对照 `utils/checksums.txt`
-  做 sha256 校验。新增/升级工具时需同步更新该文件（见 utils/checksums.txt 顶部说明）。
+- `download_and_verify`（sha256 校验）已实现，但**尚未接入**实际下载调用点；
+  当前所有外部下载仍走 `retry_download`，**不做校验**。
+- `utils/checksums.txt` 也尚未创建。
+- 校验和接线及 `utils/checksums.txt` 维护已列为延后任务（T5），完成前本控制项不视为生效。

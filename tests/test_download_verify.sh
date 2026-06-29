@@ -16,8 +16,8 @@ bad="0000000000000000000000000000000000000000000000000000000000000000"
 assert_success download_and_verify "file://$FIX" "$TMP_OUT" "$good" "fixture"
 assert_eq "$(_sha256 "$TMP_OUT")" "$good" "下载产物内容应与夹具一致"
 
-# 2) 错误哈希 -> 失败,且产物被删除
-download_and_verify "file://$FIX" "$TMP_OUT" "$bad" "fixture" 2>/dev/null
+# 2) 错误哈希 -> 失败(非零退出),且产物被删除
+assert_fail download_and_verify "file://$FIX" "$TMP_OUT" "$bad" "fixture"
 assert_eq "$([ -f "$TMP_OUT" ] && echo exists || echo gone)" "gone" "哈希不匹配时应删除产物"
 
 # 3) 空期望哈希 -> 必须失败(强制提供哈希)

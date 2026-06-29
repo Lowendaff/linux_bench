@@ -252,8 +252,10 @@ apply_dns_override() {
         cp -L "$resolv" "$TMP_DIR/resolv.conf.bak" 2>/dev/null || {
             warn "  └─ 无法备份 resolv.conf,跳过 --fix-dns"; return 1; }
     fi
-    # 若是符号链接,先删除以免写穿到 stub 目标
-    [ -L "$resolv" ] && rm -f "$resolv" 2>/dev/null
+    # 若是符号链接,先删除以免写穿到 stub 目标;删除失败则中止(避免写穿)
+    if [ -L "$resolv" ]; then
+        rm -f "$resolv" 2>/dev/null || { warn "  └─ 无法移除符号链接 $resolv,跳过 --fix-dns"; return 1; }
+    fi
     if printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 2606:4700:4700::1111\n' > "$resolv" 2>/dev/null; then
         DNS_OVERRIDE_APPLIED=true
         return 0
@@ -455,6 +457,7 @@ retry_download() {
     return 1
 }
 
+# 注:已实现但尚未接入下载调用点(校验和接线为延后任务 T5);当前下载仍走 retry_download。
 # 带 sha256 校验的下载。expected 为空则直接失败(强制调用方提供哈希)。
 # 用法: download_and_verify <url> <out> <sha256> [name] [curl额外参数字符串]
 download_and_verify() {
