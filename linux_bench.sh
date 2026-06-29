@@ -278,6 +278,8 @@ restore_dns_override() {
 
 # 信号捕捉 - 清理临时文件和依赖
 cleanup() {
+    [ -n "${_CLEANED:-}" ] && return 0
+    _CLEANED=1
     # 0. 先清理临时 swap（必须在删除 TMP_DIR 之前执行）
     local swap_file="$TMP_DIR/gb6_swapfile"
     if [ -f "$swap_file" ]; then
@@ -1761,7 +1763,7 @@ run_iperf_test() {
             p=$((p0 + RANDOM % (p1 - p0 + 1)))
             local recv=$(run_iperf_once "$host" "$p" 8 true "$ipflag")
             local lat="--"
-            if [ "$mode" = "IPv4" ]; then lat=$(ping -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); else lat=$(ping6 -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); fi
+            if [ "$mode" = "IPv4" ]; then lat=$(ping -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); else lat=$(ping -6 -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); fi
             echo "  │  │  └─ 发送: ${send} / 接收: ${recv} / 延迟: ${lat:---} ms"
 
             # Streaming Row
@@ -2754,7 +2756,7 @@ run_trace_test() {
         if [ "$HAS_V4" = "true" ]; then
             # Debug: Capture stderr to see why it fails
             local yt_err="$TMP_DIR/yt_v4.err"
-            v4=$("$YTDLP_BIN" $yt_args -4 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
+            local v4=$("$YTDLP_BIN" $yt_args -4 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v4" ]; then
                  dynamic_targets+="YouTube CDN (Dynamic)|$v4|"$'\n'
             else
@@ -2766,7 +2768,7 @@ run_trace_test() {
         fi
         if [ "$HAS_V6" = "true" ]; then
             local yt_err="$TMP_DIR/yt_v6.err"
-            v6=$("$YTDLP_BIN" $yt_args -6 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
+            local v6=$("$YTDLP_BIN" $yt_args -6 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v6" ]; then
                 dynamic_targets+="YouTube CDN (Dynamic)||$v6"$'\n'
             else
