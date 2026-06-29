@@ -365,6 +365,26 @@ calc() {
     awk "BEGIN {printf \"%.2f\", $1}"
 }
 
+is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
+is_num()  { [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]; }
+
+# 格式化欺诈评分 (0-100, 越低越好); 支持整数和小数
+format_fraud_score() {
+    local score="$1"
+    if [ -z "$score" ] || [ "$score" = "null" ]; then
+        echo "N/A|—"
+        return
+    fi
+    if ! is_num "$score"; then echo "N/A|—"; return; fi
+    local bucket
+    bucket="$(awk -v s="$score" 'BEGIN{ if (s<40) print "low"; else if (s<70) print "mid"; else print "high" }')"
+    case "$bucket" in
+        low)  echo "$score|🟢 低" ;;
+        mid)  echo "$score|🟡 中" ;;
+        *)    echo "$score|🔴 高" ;;
+    esac
+}
+
 check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -791,6 +811,7 @@ collect_system_info() {
         local mem_used=$(free -m | awk '/Mem:/ {print $3}')
         local swap_total=$(free -m | awk '/Swap:/ {print $2}')
         local swap_used=$(free -m | awk '/Swap:/ {print $3}')
+        is_uint "$swap_total" || swap_total=0
         SYS_MEM="${mem_used}MiB / ${mem_total}MiB"
         if [ "$swap_total" -eq 0 ]; then
             SYS_SWAP="0 (Disabled)"
@@ -1158,22 +1179,6 @@ collect_ip_quality() {
         esac
     }
 
-    # 格式化欺诈评分 (0-100, 越低越好)
-    format_fraud_score() {
-        local score="$1"
-        if [ -z "$score" ] || [ "$score" = "null" ]; then
-            echo "N/A|—"
-            return
-        fi
-        if [ "$score" -lt 40 ]; then
-            echo "$score|🟢 低"
-        elif [ "$score" -lt 70 ]; then
-            echo "$score|🟡 中"
-        else
-            echo "$score|🔴 高"
-        fi
-    }
-
     # 格式化滥用评分 (解析 "0.0078 (Low)" 格式)
     format_abuser_score() {
         local raw="$1"
@@ -1357,7 +1362,7 @@ run_cpu_test() {
 
     local score_nt=""
     local multi="1.00"
-    if [ "$SYS_CORES" -gt 1 ]; then
+    if is_uint "$SYS_CORES" && [ "$SYS_CORES" -gt 1 ]; then
         echo "  └─ $SYS_CORES 线程测试 (20秒)..."
         local res_nt=$(sysbench --threads="$SYS_CORES" --time=20 --cpu-max-prime=10000 cpu run 2>&1)
         score_nt=$(echo "$res_nt" | grep "events per second:" | awk '{print $4}')
@@ -1402,6 +1407,8 @@ run_gb6_test() {
     local gb6_tmp_swap=""
     local mem_total_mb=$(free -m | awk '/Mem:/ {print $2}')
     local swap_total_mb=$(free -m | awk '/Swap:/ {print $2}')
+    is_uint "$mem_total_mb"  || mem_total_mb=0
+    is_uint "$swap_total_mb" || swap_total_mb=0
     local total_mb=$((mem_total_mb + swap_total_mb))
     local min_required_mb=2048
 
