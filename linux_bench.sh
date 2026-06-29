@@ -67,6 +67,11 @@ RAW_OUTPUT=true  # 默认输出原始未标准化的数据
 SKIP_GB=false    # 是否跳过 Geekbench 6 测试
 FIX_DNS=false    # 是否强制覆盖 DNS
 
+# DNS 覆盖状态(用于精确恢复)
+DNS_OVERRIDE_APPLIED=false
+DNS_ORIG_WAS_SYMLINK=false
+DNS_ORIG_SYMLINK_TARGET=""
+
 # 报告名称前缀 (根据参数动态设置)
 REPORT_PREFIX="report"
 
@@ -227,6 +232,50 @@ NC='\033[0m'
 # 后台进度条 PID
 SPINNER_PID=""
 
+# 应用临时 DNS 覆盖,记录原状态以便精确恢复。
+apply_dns_override() {
+    local resolv="${1:-/etc/resolv.conf}"
+    DNS_OVERRIDE_APPLIED=false
+    DNS_ORIG_WAS_SYMLINK=false
+    DNS_ORIG_SYMLINK_TARGET=""
+
+    if [ -L "$resolv" ]; then
+        DNS_ORIG_WAS_SYMLINK=true
+        DNS_ORIG_SYMLINK_TARGET="$(readlink "$resolv")"
+    fi
+    if [ -e "$resolv" ]; then
+        cp -L "$resolv" "$TMP_DIR/resolv.conf.bak" 2>/dev/null || {
+            warn "  └─ 无法备份 resolv.conf,跳过 --fix-dns"; return 1; }
+    fi
+    # 若是符号链接,先删除以免写穿到 stub 目标
+    [ -L "$resolv" ] && rm -f "$resolv" 2>/dev/null
+    if printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 2606:4700:4700::1111\n' > "$resolv" 2>/dev/null; then
+        DNS_OVERRIDE_APPLIED=true
+        return 0
+    fi
+    warn "  └─ 无法写入 resolv.conf(只读/immutable?),跳过 --fix-dns"
+    return 1
+}
+
+# 恢复 DNS。幂等:未覆盖时直接返回。
+restore_dns_override() {
+    local resolv="${1:-/etc/resolv.conf}"
+    [ "$DNS_OVERRIDE_APPLIED" = "true" ] || return 0
+
+    if [ "$DNS_ORIG_WAS_SYMLINK" = "true" ] && [ -n "$DNS_ORIG_SYMLINK_TARGET" ]; then
+        rm -f "$resolv" 2>/dev/null
+        if ln -s "$DNS_ORIG_SYMLINK_TARGET" "$resolv" 2>/dev/null; then
+            DNS_OVERRIDE_APPLIED=false; return 0
+        fi
+    elif [ -f "$TMP_DIR/resolv.conf.bak" ]; then
+        if cp "$TMP_DIR/resolv.conf.bak" "$resolv" 2>/dev/null; then
+            DNS_OVERRIDE_APPLIED=false; return 0
+        fi
+    fi
+    warn "  ⚠️ 未能自动恢复 $resolv,请手动检查 DNS 配置!"
+    return 1
+}
+
 # 信号捕捉 - 清理临时文件和依赖
 cleanup() {
     # 0. 先清理临时 swap（必须在删除 TMP_DIR 之前执行）
@@ -236,9 +285,9 @@ cleanup() {
     fi
 
     # 0.5 恢复 DNS
-    if [ "$FIX_DNS" = "true" ] && [ -f "$TMP_DIR/resolv.conf.bak" ]; then
+    if [ "$DNS_OVERRIDE_APPLIED" = "true" ]; then
         echo "  ├─ 恢复系统 DNS 配置..."
-        cat "$TMP_DIR/resolv.conf.bak" > /etc/resolv.conf 2>/dev/null || true
+        restore_dns_override
     fi
 
     # 1. 删除临时文件
@@ -3257,11 +3306,9 @@ EOF
 
     if [ "$FIX_DNS" = "true" ]; then
         mkdir -p "$TMP_DIR"
-        if [ -f /etc/resolv.conf ]; then
-            cp -L /etc/resolv.conf "$TMP_DIR/resolv.conf.bak" 2>/dev/null || true
+        if apply_dns_override; then
+            log "${YELLOW}应用: 强制临时覆盖系统 DNS (--fix-dns)${NC}"
         fi
-        echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 2606:4700:4700::1111" > /etc/resolv.conf 2>/dev/null || true
-        log "${YELLOW}应用: 强制临时覆盖系统 DNS (--fix-dns)${NC}"
     fi
 
     ensure_dependencies
