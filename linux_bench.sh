@@ -17,31 +17,29 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # =========================
-# 系统检查
+# 系统前置检查 (仅在脚本被直接执行时由 main 调用)
 # =========================
-if [ "$(uname)" != "Linux" ]; then
-    echo "错误: 本脚本仅允许在 Linux 系统上执行。"
-    exit 1
-fi
-
-# 检查是否为 Debian/Ubuntu 系统
-if [ ! -f /etc/os-release ]; then
-    echo "错误: 无法识别系统类型。"
-    exit 1
-fi
-
-source /etc/os-release
-if [[ "$ID" != "debian" && "$ID" != "ubuntu" ]]; then
-    echo "错误: 本脚本仅支持 Debian 和 Ubuntu 系统。"
-    echo "当前系统: $PRETTY_NAME"
-    exit 1
-fi
-
-# 检查是否为 root 或有 sudo 权限
-if [ "$EUID" -ne 0 ] && ! sudo -n true 2>/dev/null; then
-    echo "错误: 本脚本需要 root 权限或 sudo 权限。"
-    exit 1
-fi
+preflight_checks() {
+    if [ "$(uname)" != "Linux" ]; then
+        echo "错误: 本脚本仅允许在 Linux 系统上执行。"
+        exit 1
+    fi
+    if [ ! -f /etc/os-release ]; then
+        echo "错误: 无法识别系统类型。"
+        exit 1
+    fi
+    # shellcheck disable=SC1091
+    source /etc/os-release
+    if [[ "$ID" != "debian" && "$ID" != "ubuntu" ]]; then
+        echo "错误: 本脚本仅支持 Debian 和 Ubuntu 系统。"
+        echo "当前系统: $PRETTY_NAME"
+        exit 1
+    fi
+    if [ "$EUID" -ne 0 ] && ! sudo -n true 2>/dev/null; then
+        echo "错误: 本脚本需要 root 权限或 sudo 权限。"
+        exit 1
+    fi
+}
 
 # =========================
 # 配置 & 全局变量
@@ -3132,6 +3130,7 @@ init_report() {
 }
 
 main() {
+    preflight_checks
     clear
 
     # ASCII 艺术字
@@ -3278,4 +3277,7 @@ EOF
     info "测试完成! 报告已保存至 $REPORT_FILE"
 }
 
-main
+# 仅在脚本被直接执行时运行 main;被 source 时只定义函数(便于测试)。
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
