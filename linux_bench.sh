@@ -320,6 +320,14 @@ check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# NextTrace Token:不再硬编码。若用户通过环境变量提供则使用之，
+# 否则 nexttrace 以无 token 模式运行（地理数据可能受限）。
+setup_nexttrace_token() {
+    if [ -n "${NEXTTRACE_TOKEN:-}" ]; then
+        export NEXTTRACE_TOKEN
+    fi
+}
+
 # 通用重试下载函数
 # 参数: $1=输出文件, $2=URL, $3=描述名称(可选), $4=额外curl参数(可选)
 # 重试策略: 3次重试，间隔分别为5秒、10秒、30秒
@@ -467,8 +475,8 @@ ensure_dependencies() {
             export NEXTTRACE_BIN="false"
             echo -e " ${RED}失败${NC}"
         fi
-        # 设置 NextTrace Token
-        export NEXTTRACE_TOKEN=$(echo "***REMOVED***" | base64 -d 2>/dev/null)
+        # 设置 NextTrace Token（不再硬编码；尊重用户环境变量）
+        setup_nexttrace_token
     else
         export NEXTTRACE_BIN="false"
     fi
