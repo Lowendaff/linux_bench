@@ -16,6 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# 仅启用 pipefail:让管道中任一环失败都能被感知。
+# 注意:有意不启用 set -e / set -u —— 脚本大量使用 `cmd || true` 与可空变量,
+# 贸然开启会改变现有控制流。后续如需引入需配合完整回归(见 P2 路线图)。
+set -o pipefail
+
 # =========================
 # 系统前置检查 (仅在脚本被直接执行时由 main 调用)
 # =========================
@@ -495,6 +500,7 @@ ensure_dependencies() {
     local installed_pkgs=""
 
     # 1. 检查缺失的包
+    # shellcheck disable=SC2086 # 故意词分割: 包列表
     for pkg in $target_pkgs; do
         if check_cmd "$pkg"; then
             installed_pkgs="$installed_pkgs $pkg"
@@ -525,9 +531,11 @@ ensure_dependencies() {
 
         # 安装依赖包
         echo -n "  │  └─ 安装依赖包..."
+        # shellcheck disable=SC2086 # 故意词分割: 包列表
         if apt-get install -y -q $missing_pkgs >/dev/null 2>&1; then
             echo -e " ${GREEN}完成${NC}"
             # 记录安装的包以便清理
+            # shellcheck disable=SC2086 # 故意词分割: 包列表
             for p in $missing_pkgs; do CLEANUP_PKGS+=("$p"); done
         else
             echo -e " ${RED}失败${NC}"
