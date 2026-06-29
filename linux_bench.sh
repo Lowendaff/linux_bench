@@ -2342,6 +2342,18 @@ ${stream_output_v6}"
         echo -e "$results"
     }
 
+    # 自检:原始输出非空但解析不到任何服务行 -> 上游格式可能已变
+    local _parsed_lines=0
+    if [ -n "$stream_output_v4" ]; then
+        _parsed_lines=$(( _parsed_lines + $(parse_stream_to_table "$stream_output_v4" "IPv4" | grep -Ev '^(CATEGORY:|SUBCATEGORY:|$)' | grep -c '|') ))
+    fi
+    if [ -n "$stream_output_v6" ]; then
+        _parsed_lines=$(( _parsed_lines + $(parse_stream_to_table "$stream_output_v6" "IPv6" | grep -Ev '^(CATEGORY:|SUBCATEGORY:|$)' | grep -c '|') ))
+    fi
+    if [ "$_parsed_lines" -eq 0 ]; then
+        warn "  ⚠️ 服务解锁:已获取上游输出但未解析到任何结果,上游 check.sh 格式可能已变化(报告该节将为空)。"
+    fi
+
     {
         echo "## 服务解锁测试"
         echo ""
