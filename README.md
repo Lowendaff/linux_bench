@@ -42,11 +42,11 @@ bash <(curl -L -s bench.lowendaff.com)
 
 ### 部署自动更新
 
-如果您 Fork 了本项目，可以启用 GitHub Actions 以自动更新 Netflix IX 映射数据：
+如果您 Fork 了本项目，可以启用 GitHub Actions 自动维护数据文件：
 
-1. 确保 `.github/workflows/fetch_nf_ix_map.yml` 存在。
-2. Actions 会在每周一 UTC 00:00 (北京时间 08:00) 自动运行。
-3. 也可以在 GitHub 页面手动触发 `workflow_dispatch`。
+1. **Netflix IX 映射** (`utils/nf_ix_map.txt`)：`fetch_nf_ix_map.yml`，每周一 UTC 00:00 (北京时间 08:00) 从 PeeringDB 抓取。
+2. **去程追踪源** (`utils/forward_sources.txt`)：`fetch_forward_sources.yml`，**每天** UTC 01:00 从 Globalping 探针自动再生中国大陆运营商源。
+3. 两者均可在 GitHub 页面手动触发 `workflow_dispatch`。
 
 ## 🚀 快速上手
 
@@ -128,14 +128,16 @@ sudo ./linux_bench.sh --skip-netinfo                      # 关网络信息（�
 .
 ├── .github/
 │   └── workflows/
-│       └── fetch_nf_ix_map.yml   # CI配置：定期抓取 Netflix IX 数据
+│       ├── fetch_nf_ix_map.yml        # CI：每周抓取 Netflix IX 数据
+│       └── fetch_forward_sources.yml  # CI：每天从 Globalping 再生去程源
 ├── utils/
-│   ├── fetch_nf_ix_map.py        # Python脚本：爬取 PeeringDB 解析 IX IP
-│   ├── nf_ix_map.txt             # 数据文件：Netflix IX 的 IP 映射
-│   ├── trace_targets.txt         # 数据文件：回程路由追踪目标列表
-│   └── forward_sources.txt       # 数据文件：去程路由追踪源列表
-├── linux_bench.sh                # 主程序：整合各项测试逻辑
-└── README.md                     # 说明文档
+│   ├── fetch_nf_ix_map.py             # Python：爬取 PeeringDB 解析 IX IP
+│   ├── fetch_forward_sources.py       # Python：从 Globalping 生成去程源
+│   ├── nf_ix_map.txt                  # 数据：Netflix IX 的 IP 映射
+│   ├── trace_targets.txt              # 数据：回程路由追踪目标列表
+│   └── forward_sources.txt            # 数据：去程路由追踪源列表
+├── linux_bench.sh                     # 主程序：整合各项测试逻辑
+└── README.md                          # 说明文档
 
 ```
 
@@ -147,7 +149,7 @@ sudo ./linux_bench.sh --skip-netinfo                      # 关网络信息（�
 4. **数据维护 (`utils/`)**：
    * `nf_ix_map.txt` - Netflix 交换中心 IP 数据（由 GitHub Actions 自动更新）
    * `trace_targets.txt` - 回程路由追踪目标列表（支持远程更新）
-   * `forward_sources.txt` - 去程路由追踪源列表（支持远程更新）
+   * `forward_sources.txt` - 去程路由追踪源列表（由 GitHub Actions 每天从 Globalping 探针自动再生）
 
 ## 🤝 贡献指南
 
