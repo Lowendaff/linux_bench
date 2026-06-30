@@ -69,6 +69,14 @@ RUN_APPLE=true          # Apple CDN 测速
 RUN_TRACE=true          # 回程路由追踪
 RUN_FORWARD_TRACE=true  # 去程路由追踪
 
+# iperf3 地区选择(详见 --help / parse_args / iperf_build_plan)
+IPERF_PRIORITY_GROUP="亚太"   # 优先区:默认全测,且不受 --iperf-per-region 约束
+IPERF_DEFAULT_PER_REGION=5    # 非优先区默认每区上限
+IPERF_ALL=false               # --iperf-all:运行集内所有区全测
+IPERF_REGION=""               # --iperf-region=<AS,EU,NA,SA,OC,AF>(空=默认仅亚太)
+IPERF_PER_REGION=""           # --iperf-per-region=<N>(空=用默认上限)
+IPERF_SERVERS_FILE=""         # get_iperf3_servers 下载后填充的本地路径
+
 # 修饰开关
 SKIP_V4=false
 SKIP_V6=false
@@ -323,6 +331,21 @@ calc() {
 
 is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
 is_num()  { [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]; }
+
+# 地区码 -> 中文组名(大小写不敏感);未知码 return 1。用 tr 折叠大小写以兼容 bash 3.2。
+iperf_region_to_group() {
+    local code
+    code=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    case "$code" in
+        AS) echo "亚太" ;;
+        EU) echo "欧洲" ;;
+        NA) echo "北美" ;;
+        SA) echo "南美" ;;
+        OC) echo "大洋洲" ;;
+        AF) echo "非洲" ;;
+        *)  return 1 ;;
+    esac
+}
 
 # 格式化欺诈评分 (0-100, 越低越好); 支持整数和小数
 format_fraud_score() {
