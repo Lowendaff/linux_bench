@@ -48,9 +48,23 @@ class TestBuildSources(unittest.TestCase):
 
     def test_group_order(self):
         i_tel = self.text.index("#GROUP:中国电信")
+        i_mob = self.text.index("#GROUP:中国移动")
         i_cloud = self.text.index("#GROUP:中国云厂商")
         i_other = self.text.index("#GROUP:中国其他")
-        self.assertTrue(i_tel < i_cloud < i_other)
+        self.assertTrue(i_tel < i_mob < i_cloud < i_other)
+
+    def test_city_sanitized_in_auto_name(self):
+        malicious_probe = probe("CN", 999999, "Bad|City\nEvil", "x")
+        t = build_sources([malicious_probe])
+        self.assertNotIn("Bad|City", t)
+        self.assertIn("CN+AS999999", t)
+        # the auto-named line must not embed a raw | or newline in the display name
+        for line in t.splitlines():
+            if "CN+AS999999" in line:
+                name_part = line.split("|")[0]
+                self.assertNotIn("|", name_part)
+                self.assertNotIn("\n", name_part)
+                self.assertNotIn("\r", name_part)
 
     def test_static_tail_present(self):
         self.assertIn("#GROUP:亚太地区", self.text)

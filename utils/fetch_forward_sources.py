@@ -45,6 +45,7 @@ HEADER = (
     "# 中国大陆分组由 utils/fetch_forward_sources.py 从 Globalping 探针自动生成；非中国分组为静态维护。\n"
 )
 
+# 非中国静态尾块。注意:不得包含 "CN+AS"(否则会破坏 main() 的"无中国结果"失败安全判定)。
 STATIC_TAIL = """#GROUP:亚太地区
 香港 PCCW|HK+AS3491
 香港 HGC|HK+AS9304
@@ -73,7 +74,7 @@ def build_sources(probes):
         if loc.get("country") != "CN":
             continue
         asn = loc.get("asn")
-        if not isinstance(asn, int):
+        if not isinstance(asn, int) or isinstance(asn, bool):
             continue
         cities_by_asn.setdefault(asn, []).append(loc.get("city") or "")
 
@@ -84,6 +85,7 @@ def build_sources(probes):
         else:
             cities = sorted(c for c in set(cities_by_asn[asn]) if c)
             city = cities[0] if cities else "?"
+            city = city.replace("|", " ").replace("\n", " ").replace("\r", " ").strip() or "?"
             group, name = OTHER_GROUP, "{} (AS{})".format(city, asn)
         grouped[group].append((asn, name))
 
@@ -114,10 +116,10 @@ def main():
     )
     try:
         probes = fetch_probes()
+        text = build_sources(probes)
     except Exception as e:
-        logging.error("获取 Globalping 探针失败: %s", e)
+        logging.error("生成去程源失败: %s", e)
         sys.exit(1)
-    text = build_sources(probes)
     if "CN+AS" not in text:
         logging.error("未获取到任何中国大陆探针,放弃覆盖 forward_sources.txt")
         sys.exit(1)
