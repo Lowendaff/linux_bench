@@ -1,0 +1,24 @@
+#GROUP:亚太
+as1.example.net|5201-5210|ProvA|Hong Kong, HK (10G)|IPv4|IPv6
+as2.example.net|5201|ProvB|Tokyo, JP (10G)|IPv4|IPv6
+as3.example.net|5201|ProvC|Singapore, SG (1G)|IPv4
+#GROUP:欧洲
+eu1.example.net|5201|P|City1 (10G)|IPv4|IPv6
+eu2.example.net|5201|P|City2 (10G)|IPv4|IPv6
+eu3.example.net|5201|P|City3 (10G)|IPv4|IPv6
+eu4.example.net|5201|P|City4 (10G)|IPv4|IPv6
+eu5.example.net|5201|P|City5 (10G)|IPv4|IPv6
+eu6.example.net|5201|P|City6 (10G)|IPv4|IPv6
+#GROUP:北美
+na1.example.net|5201|P|City1 (10G)|IPv4|IPv6
+na2.example.net|5201|P|City2 (10G)|IPv4|IPv6
+#GROUP:南美
+sa1.example.net|5201|P|City1 (1G)|IPv4
+#GROUP:非洲
+af1.example.net|5201|P|C1|IPv4
+af2.example.net|5201|P|C2|IPv4
+af3.example.net|5201|P|C3|IPv4
+af4.example.net|5201|P|C4|IPv4
+af5.example.net|5201|P|C5|IPv4
+af6.example.net|5201|P|C6|IPv4
+af7.example.net|5201|P|C7|IPv4

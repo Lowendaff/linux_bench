@@ -363,6 +363,66 @@ iperf_region_to_group() {
     esac
 }
 
+# 纯选择函数:stdin=服务器列表文本;按 IPERF_* 开关输出选中的 "组名<TAB>节点行"。
+# 规则:运行集 = IPERF_REGION 指定的区(替换默认)| IPERF_ALL 时全部出现的区 | 否则仅优先区。
+# 上限   = 优先区或 IPERF_ALL -> 不限;否则 IPERF_PER_REGION(空则 IPERF_DEFAULT_PER_REGION)。
+iperf_build_plan() {
+    local priority="${IPERF_PRIORITY_GROUP:-亚太}"
+    local default_n="${IPERF_DEFAULT_PER_REGION:-5}"
+    local all="${IPERF_ALL:-false}"
+    local region="${IPERF_REGION:-}"
+    local per="${IPERF_PER_REGION:-}"
+
+    # 由地区码解析显式运行集(中文组名,换行分隔,前后带换行便于整组匹配)
+    local have_region=false run_set=$'\n'
+    if [ -n "$region" ]; then
+        have_region=true
+        local _codes _c _g
+        IFS=',' read -ra _codes <<< "$region"
+        for _c in "${_codes[@]}"; do
+            [ -z "$_c" ] && continue
+            _g=$(iperf_region_to_group "$_c") || continue
+            run_set="${run_set}${_g}"$'\n'
+        done
+    fi
+
+    local cur="" count=0 line cap
+    while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        if [[ "$line" == "#GROUP:"* ]]; then
+            cur="${line#*#GROUP:}"
+            count=0
+            continue
+        fi
+        [[ "$line" == "#"* ]] && continue
+        [ -z "$cur" ] && continue
+
+        # 当前组是否在运行集内?
+        if $have_region; then
+            [[ "$run_set" == *$'\n'"$cur"$'\n'* ]] || continue
+        elif [ "$all" = "true" ]; then
+            :
+        else
+            [ "$cur" = "$priority" ] || continue
+        fi
+
+        # 该组上限(-1 = 不限)
+        if [ "$cur" = "$priority" ] || [ "$all" = "true" ]; then
+            cap=-1
+        elif [ -n "$per" ]; then
+            cap="$per"
+        else
+            cap="$default_n"
+        fi
+        if [ "$cap" -ge 0 ] && [ "$count" -ge "$cap" ]; then
+            continue
+        fi
+
+        printf '%s\t%s\n' "$cur" "$line"
+        count=$((count+1))
+    done
+}
+
 # 格式化欺诈评分 (0-100, 越低越好); 支持整数和小数
 format_fraud_score() {
     local score="$1"
