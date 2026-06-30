@@ -122,6 +122,9 @@ print_usage() {
   --raw                原始输出(默认)
   --normalize          标准化输出(地名去后缀、运营商名统一)
   --fix-dns            测试期间临时覆盖系统 DNS
+  --iperf-all          iperf3: 全部 6 个地区全测(默认仅全测亚太)
+  --iperf-region=<码>  iperf3: 只测指定地区,逗号分隔。码: AS 亚太/EU 欧洲/NA 北美/SA 南美/OC 大洋洲/AF 非洲
+  --iperf-per-region=N iperf3: 非亚太地区每区最多测 N 个(默认 5;亚太恒为全测)
   -h, --help           显示本帮助并退出
 
 示例:
@@ -3271,6 +3274,7 @@ EOF
     echo -e "      --skip-trace --skip-forward   跳过路由追踪"
     echo -e "  -4 / -6              仅 IPv4 / 仅 IPv6"
     echo -e "      --fix-dns        测试期间临时覆盖系统 DNS"
+    echo -e "      --iperf-region=EU,NA  iperf3 只测指定地区(默认仅亚太);--iperf-all 全测"
     echo -e "  -h, --help           查看完整选项列表\n"
 
     # 致谢
