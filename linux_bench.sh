@@ -661,17 +661,14 @@ ensure_dependencies() {
     # 实际下载 - Cloudflare Speedtest CLI
     if [ "$RUN_CF" = "true" ]; then
         local arch=$(uname -m)
-        local cf_url_primary=""
-        local cf_url_fallback=""
+        local cf_url=""
 
         case "$arch" in
             x86_64)
-                cf_url_primary="https://file.lowendaff.com/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
-                cf_url_fallback="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
+                cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-x86_64-unknown-linux-musl.tar.xz"
                 ;;
             aarch64)
-                cf_url_primary="https://file.lowendaff.com/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
-                cf_url_fallback="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
+                cf_url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/latest/download/cloudflare-speed-cli-aarch64-unknown-linux-musl.tar.xz"
                 ;;
             *)
                 warn "  └─ 不支持的架构: $arch，跳过 cf-speed"
@@ -679,20 +676,13 @@ ensure_dependencies() {
                 ;;
         esac
 
-        if [ -n "$cf_url_primary" ]; then
+        if [ -n "$cf_url" ]; then
             local cf_tarball="$TMP_DIR/cloudflare-speed-cli.tar.xz"
             echo -n "  ├─ 正在下载 cf-speed..."
 
             local download_success=false
-            # 先尝试主源（带重试）
-            if retry_download "$cf_tarball" "$cf_url_primary" "cf-speed"; then
+            if retry_download "$cf_tarball" "$cf_url" "cf-speed"; then
                 download_success=true
-            else
-                # 主源失败，尝试 GitHub 备用源（带重试）
-                echo -n " (使用 GitHub)..."
-                if retry_download "$cf_tarball" "$cf_url_fallback" "cf-speed (GitHub)"; then
-                    download_success=true
-                fi
             fi
 
             if [ "$download_success" = "true" ]; then
@@ -758,17 +748,14 @@ ensure_dependencies() {
         # 6.7.1:旧版 6.5.0 自带的 TLS 栈过旧,结果上传到 Geekbench Browser 会 TLS 握手失败
         # (libcurl code 35)→ 免费版拿不到分 → 误报"测试失败"。6.7.x 自带新 TLS 栈,上传正常(实测验证)。
         local gb6_version="6.7.1"
-        local gb6_url_primary=""
-        local gb6_url_fallback=""
+        local gb6_url=""
 
         case "$arch" in
             x86_64)
-                gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-Linux.tar.gz"
-                gb6_url_fallback="https://cdn.geekbench.com/Geekbench-${gb6_version}-Linux.tar.gz"
+                gb6_url="https://cdn.geekbench.com/Geekbench-${gb6_version}-Linux.tar.gz"
                 ;;
             aarch64)
-                gb6_url_primary="https://file.lowendaff.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
-                gb6_url_fallback="https://cdn.geekbench.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
+                gb6_url="https://cdn.geekbench.com/Geekbench-${gb6_version}-LinuxARMPreview.tar.gz"
                 ;;
             *)
                 warn "  └─ 不支持的架构: $arch，跳过 Geekbench 6"
@@ -776,20 +763,13 @@ ensure_dependencies() {
                 ;;
         esac
 
-        if [ -n "$gb6_url_primary" ]; then
+        if [ -n "$gb6_url" ]; then
             local gb6_tarball="$TMP_DIR/geekbench6.tar.gz"
             echo -n "  ├─ 正在下载 Geekbench 6..."
 
             local download_success=false
-            # 先尝试主源（带重试）
-            if retry_download "$gb6_tarball" "$gb6_url_primary" "Geekbench 6"; then
+            if retry_download "$gb6_tarball" "$gb6_url" "Geekbench 6"; then
                 download_success=true
-            else
-                # 主源失败，尝试官方备用源（带重试）
-                echo -n " (使用官方源)..."
-                if retry_download "$gb6_tarball" "$gb6_url_fallback" "Geekbench 6 (官方)"; then
-                    download_success=true
-                fi
             fi
 
             if [ "$download_success" = "true" ]; then
