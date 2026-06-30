@@ -156,6 +156,22 @@ parse_args() {
             --raw)             RAW_OUTPUT=true; NORMALIZE_OUTPUT=false ;;
             --normalize)       NORMALIZE_OUTPUT=true; RAW_OUTPUT=false ;;
             --fix-dns)         FIX_DNS=true ;;
+            --iperf-all)       IPERF_ALL=true ;;
+            --iperf-region=*)
+                IPERF_REGION="${1#*=}"
+                local _codes _c
+                IFS=',' read -ra _codes <<< "$IPERF_REGION"
+                for _c in "${_codes[@]}"; do
+                    [ -z "$_c" ] && continue
+                    iperf_region_to_group "$_c" >/dev/null 2>&1 || {
+                        fail "未知 --iperf-region 地区: '$_c'。可选: AS,EU,NA,SA,OC,AF。"; exit 1; }
+                done
+                ;;
+            --iperf-per-region=*)
+                IPERF_PER_REGION="${1#*=}"
+                { is_uint "$IPERF_PER_REGION" && [ "$IPERF_PER_REGION" -ge 1 ]; } || {
+                    fail "--iperf-per-region 需为正整数,得到 '$IPERF_PER_REGION'。"; exit 1; }
+                ;;
             -h|--help)         print_usage; exit 0 ;;
             # 已移除的旧「套餐」flag —— 给出迁移提示
             -n|--network|--hardware|-t|--nexttrace|-i|--ip-quality|-s|--service|-f|--forward|-p|--public|--speedtest)

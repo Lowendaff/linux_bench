@@ -51,4 +51,20 @@ assert_fail    bash -c "source '$LB' 2>/dev/null; parse_args --bogus"  # 未知�
 assert_fail    bash -c "source '$LB' 2>/dev/null; parse_args -n"       # 已移除的旧 flag -> 退出 1
 assert_success bash -c "source '$LB' 2>/dev/null; parse_args --help"   # 帮助 -> 退出 0
 
+# --- iperf3 地区选择开关 ---
+assert_eq "$(val IPERF_ALL --iperf-all)"                 "true"  "--iperf-all 置 IPERF_ALL"
+assert_eq "$(val IPERF_REGION --iperf-region=EU,NA)"     "EU,NA" "--iperf-region 捕获值"
+assert_eq "$(val IPERF_PER_REGION --iperf-per-region=3)" "3"     "--iperf-per-region 捕获值"
+assert_eq "$(val IPERF_ALL)"        "false" "默认 IPERF_ALL=false"
+assert_eq "$(val IPERF_REGION)"     ""      "默认 IPERF_REGION 空"
+
+# 合法:小写码、组合
+assert_success bash -c "source '$LB' 2>/dev/null; parse_args --iperf-region=eu,na"
+assert_success bash -c "source '$LB' 2>/dev/null; parse_args --iperf-all --iperf-region=AS"
+# 非法:未知码、非正整数
+assert_fail bash -c "source '$LB' 2>/dev/null; parse_args --iperf-region=XX"
+assert_fail bash -c "source '$LB' 2>/dev/null; parse_args --iperf-per-region=abc"
+assert_fail bash -c "source '$LB' 2>/dev/null; parse_args --iperf-per-region=0"
+assert_fail bash -c "source '$LB' 2>/dev/null; parse_args --iperf-per-region=-1"
+
 finish
