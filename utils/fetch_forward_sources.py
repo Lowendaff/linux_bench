@@ -9,12 +9,6 @@ import os
 import sys
 import urllib.request
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "forward_sources.txt")
 PROBES_URL = "https://api.globalping.io/v1/probes"
 
@@ -102,3 +96,35 @@ def build_sources(probes):
             parts.append("{}|CN+AS{}\n".format(name, asn))
     parts.append("\n" + STATIC_TAIL)
     return "".join(parts)
+
+
+def fetch_probes():
+    req = urllib.request.Request(
+        PROBES_URL, headers={"User-Agent": "linux_bench-forward-sources/1.0"}
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    try:
+        probes = fetch_probes()
+    except Exception as e:
+        logging.error("获取 Globalping 探针失败: %s", e)
+        sys.exit(1)
+    text = build_sources(probes)
+    if "CN+AS" not in text:
+        logging.error("未获取到任何中国大陆探针,放弃覆盖 forward_sources.txt")
+        sys.exit(1)
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(text)
+    logging.info("已生成 %s(中国大陆源 %d 条)", OUTPUT_FILE, text.count("CN+AS"))
+
+
+if __name__ == "__main__":
+    main()

@@ -2,14 +2,38 @@
 # 格式: 显示名称|--from参数
 # 每行一个源，#开头的行为注释或分组标记
 # #GROUP:分组名 用于在报告中分组显示
+# 中国大陆分组由 utils/fetch_forward_sources.py 从 Globalping 探针自动生成；非中国分组为静态维护。
 
-#GROUP:中国三大运营商
+#GROUP:中国电信
 中国电信 163|CN+AS4134
-中国电信 CN2|CN+AS4809
+中国电信 AS4847|CN+AS4847
+中国电信 (武汉)|CN+AS151185
+
+#GROUP:中国联通
+中国联通 (北京)|CN+AS4808
 中国联通 169|CN+AS4837
-中国联通 A网|CN+AS9929
+中国联通 A网 (9929)|CN+AS9929
+中国联通 (上海)|CN+AS17621
+
+#GROUP:中国移动
 中国移动 CMNET|CN+AS9808
-中国移动 CMIN2|CN+AS58807
+中国移动 (上海)|CN+AS24400
+中国移动 (河南)|CN+AS24445
+中国移动 (扬州)|CN+AS56046
+中国移动 (长沙)|CN+AS56047
+中国移动 (北京)|CN+AS56048
+
+#GROUP:中国云厂商
+阿里云|CN+AS37963
+腾讯云|CN+AS45090
+华为云|CN+AS55990
+
+#GROUP:中国其他
+Guangzhou (AS17622)|CN+AS17622
+深圳天威 (Topway)|CN+AS17962
+Ningbo (AS56041)|CN+AS56041
+Shiyan (AS146817)|CN+AS146817
+Beijing (AS153393)|CN+AS153393
 
 #GROUP:亚太地区
 香港 PCCW|HK+AS3491
