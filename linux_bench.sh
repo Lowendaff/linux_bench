@@ -350,6 +350,9 @@ calc() {
 
 is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
 is_num()  { [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]; }
+# GB6 免费版分数只在上传后的结果页可见;VPS 上该页常被 Cloudflare 拦截 → 本机抓不到分数。
+# 参数:单核分数、多核分数、结果 URL。两分数都空但有 URL(=上传成功、抓取被挡)时为真。
+gb6_scores_blocked() { [ -z "$1" ] && [ -z "$2" ] && [ -n "$3" ]; }
 
 # 地区码 -> 中文组名(大小写不敏感);未知码 return 1。用 tr 折叠大小写以兼容 bash 3.2。
 iperf_region_to_group() {
@@ -1563,6 +1566,9 @@ run_gb6_test() {
     [ -n "$instruction_sets" ] && echo "  ├─ 指令集: $instruction_sets"
     echo "  ├─ 单核分数: ${single_score:-N/A}"
     echo "  ├─ 多核分数: ${multi_score:-N/A}"
+    if gb6_scores_blocked "$single_score" "$multi_score" "$result_url"; then
+        echo "  ├─ 注:本机未能抓取分数(Geekbench Browser 对 VPS 启用了 Cloudflare 防护),请见结果链接"
+    fi
     [ -n "$result_url" ] && echo "  ├─ 结果链接: $result_url"
 
     # 保存到全局变量
@@ -1586,6 +1592,10 @@ run_gb6_test() {
         echo "| 单核分数 | $GB6_SINGLE |"
         echo "| 多核分数 | $GB6_MULTI |"
         echo ""
+        if gb6_scores_blocked "$single_score" "$multi_score" "$result_url"; then
+            echo "> 注:本机未能抓取分数(Geekbench Browser 对 VPS 启用了 Cloudflare 防护),请点下方在线结果链接查看。"
+            echo ""
+        fi
         if [ -n "$GB6_URL" ]; then
             echo "在线结果: $GB6_URL"
         fi
