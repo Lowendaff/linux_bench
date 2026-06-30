@@ -1802,6 +1802,12 @@ run_iperf_test() {
         IFS='|' read -r host ports provider loc modes <<< "$entry"
         IFS='-' read -r p0 p1 <<< "$ports"
         [ -z "$p1" ] && p1="$p0"
+        # 端口字段须为数字(单端口或 N-M 范围);非法则跳过该节点
+        # (防御被污染/打错的目录,避免 $((...)) 把端口当算术表达式求值)。
+        if ! is_uint "$p0" || ! is_uint "$p1"; then
+            warn "  │  ├─ 跳过 $provider $loc:端口字段非法 ('$ports')"
+            continue
+        fi
 
         for mode in IPv4 IPv6; do
             if [[ "$modes" != *"$mode"* ]]; then continue; fi

@@ -27,4 +27,8 @@ non_asia=$(printf '%s\n' "$out" | awk -F'\t' 'NF>0 && $1!="亚太"')
 assert_eq "$non_asia" "" "默认计划仅亚太"
 assert_success test -n "$out"
 
+# 端口字段须为 N 或 N-M(纯数字),防止 $((...)) 误求值 / 端口打错字
+bad_ports=$(awk -F'|' '!/^#/ && NF>0 && $2 !~ /^[0-9]+(-[0-9]+)?$/ {print NR": "$2}' "$SRV")
+assert_eq "$bad_ports" "" "所有端口字段为 N 或 N-M"
+
 finish
