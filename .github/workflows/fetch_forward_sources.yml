@@ -1,0 +1,51 @@
+name: Fetch Forward Trace Sources
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fetch_forward_sources.yml"
+      - "utils/fetch_forward_sources.py"
+  schedule:
+    # 每周一 UTC 01:00 (错开 nf_ix_map 的 00:00)
+    - cron: "0 1 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forward-sources-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch forward trace sources
+        run: python utils/fetch_forward_sources.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git status --porcelain utils/forward_sources.txt | grep -q .; then
+            git add utils/forward_sources.txt
+            git commit -m 'actions: Update forward trace sources'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          else
+            echo 'No changes to commit'
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
