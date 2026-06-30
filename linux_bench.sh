@@ -755,7 +755,9 @@ ensure_dependencies() {
     # 实际下载 - Geekbench 6 (有进度提示)
     if [ "$RUN_GB" = "true" ]; then
         local arch=$(uname -m)
-        local gb6_version="6.5.0"
+        # 6.7.1:旧版 6.5.0 自带的 TLS 栈过旧,结果上传到 Geekbench Browser 会 TLS 握手失败
+        # (libcurl code 35)→ 免费版拿不到分 → 误报"测试失败"。6.7.x 自带新 TLS 栈,上传正常(实测验证)。
+        local gb6_version="6.7.1"
         local gb6_url_primary=""
         local gb6_url_fallback=""
 
