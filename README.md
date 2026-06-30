@@ -96,6 +96,32 @@ sudo ./linux_bench.sh --skip-speedtest --skip-trace --skip-forward   # 不测速
 sudo ./linux_bench.sh --skip-netinfo                      # 关网络信息（级联），只剩硬件 + cf/apple
 ```
 
+### iperf3 地区选择
+
+iperf3 节点按地区分组(数据见 `utils/iperf3_servers.txt`)。**默认只全测「亚太」**,其余地区按需开启。
+
+| 地区码 | 地区 |
+| :-- | :-- |
+| `AS` | 亚太(优先,默认全测) |
+| `EU` | 欧洲 |
+| `NA` | 北美 |
+| `SA` | 南美 |
+| `OC` | 大洋洲 |
+| `AF` | 非洲 |
+
+| 开关 | 作用 |
+| :--- | :--- |
+| `--iperf-all` | 全部 6 个地区全测 |
+| `--iperf-region=<码,...>` | 只测指定地区(替换默认;码大小写不敏感) |
+| `--iperf-per-region=<N>` | 非亚太地区每区最多 N 个(默认 5;亚太恒为全测,不受此约束) |
+
+```bash
+sudo ./linux_bench.sh                              # 仅亚太全测(默认)
+sudo ./linux_bench.sh --iperf-region=EU,NA         # 仅欧洲+北美,各前 5
+sudo ./linux_bench.sh --iperf-region=AS,EU         # 亚太全 + 欧洲前 5
+sudo ./linux_bench.sh --iperf-all                  # 全 6 区全测(很慢)
+```
+
 ### 3. 修饰选项
 
 * **强制 IP 版本** (`-4`, `-6`)

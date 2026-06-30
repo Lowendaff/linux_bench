@@ -69,6 +69,14 @@ RUN_APPLE=true          # Apple CDN 测速
 RUN_TRACE=true          # 回程路由追踪
 RUN_FORWARD_TRACE=true  # 去程路由追踪
 
+# iperf3 地区选择(详见 --help / parse_args / iperf_build_plan)
+IPERF_PRIORITY_GROUP="亚太"   # 优先区:默认全测,且不受 --iperf-per-region 约束
+IPERF_DEFAULT_PER_REGION=5    # 非优先区默认每区上限
+IPERF_ALL=false               # --iperf-all:运行集内所有区全测
+IPERF_REGION=""               # --iperf-region=<AS,EU,NA,SA,OC,AF>(空=默认仅亚太)
+IPERF_PER_REGION=""           # --iperf-per-region=<N>(空=用默认上限)
+IPERF_SERVERS_FILE=""         # get_iperf3_servers 下载后填充的本地路径
+
 # 修饰开关
 SKIP_V4=false
 SKIP_V6=false
@@ -114,6 +122,9 @@ print_usage() {
   --raw                原始输出(默认)
   --normalize          标准化输出(地名去后缀、运营商名统一)
   --fix-dns            测试期间临时覆盖系统 DNS
+  --iperf-all          iperf3: 全部 6 个地区全测(默认仅全测亚太)
+  --iperf-region=<码>  iperf3: 只测指定地区,逗号分隔。码: AS 亚太/EU 欧洲/NA 北美/SA 南美/OC 大洋洲/AF 非洲
+  --iperf-per-region=N iperf3: 非亚太地区每区最多测 N 个(默认 5;亚太恒为全测)
   -h, --help           显示本帮助并退出
 
 示例:
@@ -148,6 +159,22 @@ parse_args() {
             --raw)             RAW_OUTPUT=true; NORMALIZE_OUTPUT=false ;;
             --normalize)       NORMALIZE_OUTPUT=true; RAW_OUTPUT=false ;;
             --fix-dns)         FIX_DNS=true ;;
+            --iperf-all)       IPERF_ALL=true ;;
+            --iperf-region=*)
+                IPERF_REGION="${1#*=}"
+                local _codes _c
+                IFS=',' read -ra _codes <<< "$IPERF_REGION"
+                for _c in "${_codes[@]}"; do
+                    [ -z "$_c" ] && continue
+                    iperf_region_to_group "$_c" >/dev/null 2>&1 || {
+                        fail "未知 --iperf-region 地区: '$_c'。可选: AS,EU,NA,SA,OC,AF。"; exit 1; }
+                done
+                ;;
+            --iperf-per-region=*)
+                IPERF_PER_REGION="${1#*=}"
+                { is_uint "$IPERF_PER_REGION" && [ "$IPERF_PER_REGION" -ge 1 ]; } || {
+                    fail "--iperf-per-region 需为正整数,得到 '$IPERF_PER_REGION'。"; exit 1; }
+                ;;
             -h|--help)         print_usage; exit 0 ;;
             # 已移除的旧「套餐」flag —— 给出迁移提示
             -n|--network|--hardware|-t|--nexttrace|-i|--ip-quality|-s|--service|-f|--forward|-p|--public|--speedtest)
@@ -323,6 +350,81 @@ calc() {
 
 is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
 is_num()  { [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]; }
+
+# 地区码 -> 中文组名(大小写不敏感);未知码 return 1。用 tr 折叠大小写以兼容 bash 3.2。
+iperf_region_to_group() {
+    local code
+    code=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    case "$code" in
+        AS) echo "亚太" ;;
+        EU) echo "欧洲" ;;
+        NA) echo "北美" ;;
+        SA) echo "南美" ;;
+        OC) echo "大洋洲" ;;
+        AF) echo "非洲" ;;
+        *)  return 1 ;;
+    esac
+}
+
+# 纯选择函数:stdin=服务器列表文本;按 IPERF_* 开关输出选中的 "组名<TAB>节点行"。
+# 规则:运行集 = IPERF_REGION 指定的区(替换默认)| IPERF_ALL 时全部出现的区 | 否则仅优先区。
+# 上限   = 优先区或 IPERF_ALL -> 不限;否则 IPERF_PER_REGION(空则 IPERF_DEFAULT_PER_REGION)。
+iperf_build_plan() {
+    local priority="${IPERF_PRIORITY_GROUP:-亚太}"
+    local default_n="${IPERF_DEFAULT_PER_REGION:-5}"
+    local all="${IPERF_ALL:-false}"
+    local region="${IPERF_REGION:-}"
+    local per="${IPERF_PER_REGION:-}"
+
+    # 由地区码解析显式运行集(中文组名,换行分隔,前后带换行便于整组匹配)
+    local have_region=false run_set=$'\n'
+    if [ -n "$region" ]; then
+        have_region=true
+        local _codes _c _g
+        IFS=',' read -ra _codes <<< "$region"
+        for _c in "${_codes[@]}"; do
+            [ -z "$_c" ] && continue
+            _g=$(iperf_region_to_group "$_c") || continue
+            run_set="${run_set}${_g}"$'\n'
+        done
+    fi
+
+    local cur="" count=0 line cap
+    while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        if [[ "$line" == "#GROUP:"* ]]; then
+            cur="${line#*#GROUP:}"
+            count=0
+            continue
+        fi
+        [[ "$line" == "#"* ]] && continue
+        [ -z "$cur" ] && continue
+
+        # 当前组是否在运行集内?
+        if $have_region; then
+            [[ "$run_set" == *$'\n'"$cur"$'\n'* ]] || continue
+        elif [ "$all" = "true" ]; then
+            :
+        else
+            [ "$cur" = "$priority" ] || continue
+        fi
+
+        # 该组上限(-1 = 不限)
+        if [ "$cur" = "$priority" ] || [ "$all" = "true" ]; then
+            cap=-1
+        elif [ -n "$per" ]; then
+            cap="$per"
+        else
+            cap="$default_n"
+        fi
+        if [ "$cap" -ge 0 ] && [ "$count" -ge "$cap" ]; then
+            continue
+        fi
+
+        printf '%s\t%s\n' "$cur" "$line"
+        count=$((count+1))
+    done
+}
 
 # 格式化欺诈评分 (0-100, 越低越好); 支持整数和小数
 format_fraud_score() {
@@ -1651,62 +1753,69 @@ run_iperf_once() {
 
 get_iperf3_servers() {
     local servers_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/iperf3_servers.txt"
-    local servers_file="$TMP_DIR/iperf3_servers.txt"
+    IPERF_SERVERS_FILE="$TMP_DIR/iperf3_servers.txt"
 
-    if ! retry_download "$servers_file" "$servers_url" "iPerf3 Servers" "--connect-timeout 5 --max-time 15"; then
+    if ! retry_download "$IPERF_SERVERS_FILE" "$servers_url" "iPerf3 Servers" "--connect-timeout 5 --max-time 15"; then
         warn "  Failed to download iPerf3 servers."
-        return
+        IPERF_SERVERS_FILE=""
+        return 1
     fi
-
-    locs=()
-    locs_cn=()
-    local current_group=""
-
-    while IFS= read -r line || [ -n "$line" ]; do
-        # 忽略空行和注释行（除了 GROUP 标记）
-        if [[ -z "$line" ]]; then continue; fi
-        if [[ "$line" == "#GROUP:"* ]]; then
-            current_group="${line#*#GROUP:}"
-            continue
-        fi
-        if [[ "$line" == "#"* ]]; then continue; fi
-        
-        if [[ "$current_group" == "国际节点" ]]; then
-            locs+=("$line")
-        elif [[ "$current_group" == "国内节点" ]]; then
-            locs_cn+=("$line")
-        fi
-    done < "$servers_file"
+    return 0
 }
 
 run_iperf_test() {
     log "开始网络带宽测试..."
     if ! check_cmd iperf3; then warn "  └─ iperf3 未安装，跳过"; return; fi
 
-    local locs=()
-    local locs_cn=()
-    get_iperf3_servers
+    if ! get_iperf3_servers || [ -z "$IPERF_SERVERS_FILE" ]; then
+        return
+    fi
 
-    # === Streaming Report (Header) ===
-    {
-        echo "## 网络带宽测试"
-        echo "| IP 类型 | 运营商 | 服务器位置 | 发送带宽 | 接收带宽 | 延迟 |"
-        echo "| :--- | :--- | :--- | :--- | :--- | :--- |"
-    } >> "$REPORT_FILE"
+    # 纯函数选出本次要测的节点(组名<TAB>节点行)
+    local plan
+    plan=$(iperf_build_plan < "$IPERF_SERVERS_FILE")
+    if [ -z "$plan" ]; then
+        info "  └─ 无可测 iperf3 节点(检查 --iperf-region / --iperf-all 与节点列表)"
+        return
+    fi
 
-    echo "  ├─ 国际节点测试..."
-    local idx=0
-    for entry in "${locs[@]}"; do
+    echo "## 网络带宽测试" >> "$REPORT_FILE"
+
+    local total cur_group="" idx=0
+    total=$(printf '%s\n' "$plan" | awk -F'\t' 'NF>0' | wc -l | tr -d ' ')
+
+    while IFS=$'\t' read -r group entry; do
+        [ -z "$entry" ] && continue
+
+        if [ "$group" != "$cur_group" ]; then
+            cur_group="$group"
+            {
+                echo ""
+                echo "### $group"
+                echo "| IP 类型 | 运营商 | 服务器位置 | 发送带宽 | 接收带宽 | 延迟 |"
+                echo "| :--- | :--- | :--- | :--- | :--- | :--- |"
+            } >> "$REPORT_FILE"
+            echo "  ├─ ${group}节点测试..."
+        fi
+
         idx=$((idx+1))
         IFS='|' read -r host ports provider loc modes <<< "$entry"
         IFS='-' read -r p0 p1 <<< "$ports"
+        [ -z "$p1" ] && p1="$p0"
+        # 端口字段须为数字(单端口或 N-M 范围);非法则跳过该节点
+        # (防御被污染/打错的目录,避免 $((...)) 把端口当算术表达式求值)。
+        if ! is_uint "$p0" || ! is_uint "$p1"; then
+            warn "  │  ├─ 跳过 $provider $loc:端口字段非法 ('$ports')"
+            continue
+        fi
+
         for mode in IPv4 IPv6; do
             if [[ "$modes" != *"$mode"* ]]; then continue; fi
-            if [ "$mode" == "IPv4" ] && [ "$HAS_V4" != "true" ]; then continue; fi
-            if [ "$mode" == "IPv6" ] && [ "$HAS_V6" != "true" ]; then continue; fi
-            local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
+            if [ "$mode" = "IPv4" ] && [ "$HAS_V4" != "true" ]; then continue; fi
+            if [ "$mode" = "IPv6" ] && [ "$HAS_V6" != "true" ]; then continue; fi
+            local ipflag="-4"; [ "$mode" = "IPv6" ] && ipflag="-6"
 
-            echo "  │  ├─ [$idx/${#locs[@]}] $provider - $loc ($mode)..."
+            echo "  │  ├─ [$idx/$total] $provider - $loc ($mode)..."
             local p=$((p0 + RANDOM % (p1 - p0 + 1)))
             local send=$(run_iperf_once "$host" "$p" 8 false "$ipflag")
             p=$((p0 + RANDOM % (p1 - p0 + 1)))
@@ -1715,54 +1824,12 @@ run_iperf_test() {
             if [ "$mode" = "IPv4" ]; then lat=$(ping -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); else lat=$(ping -6 -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}'); fi
             echo "  │  │  └─ 发送: ${send} / 接收: ${recv} / 延迟: ${lat:---} ms"
 
-            # Streaming Row
             echo "| $mode | $provider | $loc | $send | $recv | ${lat:---} ms |" >> "$REPORT_FILE"
         done
-    done
-
-    echo "" >> "$REPORT_FILE"
-
-    echo "  ├─ 国内节点测试..."
-
-    # === Streaming Report (Domestic Header) ===
-    if [ "$HAS_V4" = "true" ] && [ ${#locs_cn[@]} -gt 0 ]; then
-        {
-            echo "### 国内节点（感谢青毅云提供测试节点）"
-            echo ""
-            echo "🌐 青毅云计算 (YOUTHIDC)  "
-            echo "⚡️ 国内大带宽独享服务器，IEPL 跨境专线  "
-            echo "💬 Telegram 群组：https://t.me/YouthIDC"
-            echo ""
-            echo "| 节点 | 线程 | 发送带宽 | 接收带宽 |"
-            echo "| :--- | :--- | :--- | :--- |"
-        } >> "$REPORT_FILE"
-    fi
-
-    idx=0
-    for entry in "${locs_cn[@]}"; do
-        idx=$((idx+1))
-        IFS='|' read -r host port provider loc modes <<< "$entry"
-        [ "$HAS_V4" != "true" ] && continue
-        echo "  │  ├─ [$idx/${#locs_cn[@]}] $provider $loc..."
-        local lat=$(ping -c 1 -W 1 "$host" 2>/dev/null | grep "time=" | awk -F "time=" '{print $2}' | awk '{print $1}');
-        echo "  │  │  ├─ 单线程..."
-        local s1=$(run_iperf_once "$host" "$port" 1 false "-4")
-        local r1=$(run_iperf_once "$host" "$port" 1 true "-4")
-        echo "  │  │  │  └─ 发送: $s1 / 接收: $r1"
-
-        echo "| $provider $loc | 1 | $s1 | $r1 |" >> "$REPORT_FILE"
-
-        echo "  │  │  ├─ 8线程..."
-        local s8=$(run_iperf_once "$host" "$port" 8 false "-4")
-        local r8=$(run_iperf_once "$host" "$port" 8 true "-4")
-        echo "  │  │  │  └─ 发送: $s8 / 接收: $r8"
-
-        echo "| $provider $loc | 8 | $s8 | $r8 |" >> "$REPORT_FILE"
-    done
+    done <<< "$plan"
 
     echo "" >> "$REPORT_FILE"
     info "  └─ 带宽测试完成"
-
 }
 
 run_cloudflare_speedtest() {
@@ -3213,6 +3280,7 @@ EOF
     echo -e "      --skip-trace --skip-forward   跳过路由追踪"
     echo -e "  -4 / -6              仅 IPv4 / 仅 IPv6"
     echo -e "      --fix-dns        测试期间临时覆盖系统 DNS"
+    echo -e "      --iperf-region=EU,NA  iperf3 只测指定地区(默认仅亚太);--iperf-all 全测"
     echo -e "  -h, --help           查看完整选项列表\n"
 
     # 致谢
