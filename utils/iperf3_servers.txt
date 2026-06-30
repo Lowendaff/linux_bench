@@ -1,14 +1,71 @@
-#GROUP:国际节点
-iperf3-vie-at.alwyzon.net|5201-5208|Alwyzon|Vienna, AT (100G)|IPv4|IPv6
-speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6
-iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6
+# iperf3 公共测速节点目录(按地区分组)
+# 格式: host|端口或范围|运营商|City, CC (speed)|IPv4[|IPv6]
+#   - #GROUP:<中文地区> 标记分组(亚太/欧洲/北美/南美/大洋洲/非洲);# 开头为注释。
+#   - IPv6 字段仅在服务器确实支持时写;否则只写 IPv4。
+#   - 组内按优先级排序: A) 命名主机+端口范围+IPv6, B) 命名主机+端口范围, C) 裸 IP; 同档按带宽降序。
+#   - 来源: R0GGER/public-iperf3-servers(社区监控列表, 30 天可用率>90%)、SEACOM as37100.net、
+#     各机房公开端点(Leaseweb/Clouvider/Scaleway/Alwyzon/Eranium/Advin/Nocix 等)。
+#     裸 IP 的运营商经反向 DNS/whois 核实(CDN77=*.cdn77.com PTR; GSL Networks; Movistar)。
+#   - 默认(无 --iperf-region/--iperf-all)仅全测「亚太」组; 其余地区按 top-N 选取。
+
+#GROUP:亚太
 speedtest.sin1.sg.leaseweb.net|5201-5210|Leaseweb|Singapore, SG (10G)|IPv4|IPv6
+speedtest.hkg12.hk.leaseweb.net|5201-5210|Leaseweb|Hong Kong, HK (10G)|IPv4|IPv6
+speedtest.tyo11.jp.leaseweb.net|5201-5210|Leaseweb|Tokyo, JP (10G)|IPv4|IPv6
+speedtest.uztelecom.uz|5200-5209|Uztelecom|Tashkent, UZ (10G)|IPv4|IPv6
+iperf.pendc.com|5201-5209|PenDC|Bursa, TR (10G)|IPv4|IPv6
+iperf.scbd.net.id|5201-5209|SCBD|Jakarta, ID (1G)|IPv4|IPv6
+sgp.proof.ovh.net|5201-5210|OVH|Singapore, SG (1G)|IPv4
+84.17.57.129|5201|CDN77|Hong Kong, HK (20G)|IPv4
+89.187.160.1|5201|CDN77|Tokyo, JP (20G)|IPv4
+23.249.55.42|30000|GSL Networks|Dubai, AE (10G)|IPv4
+23.249.61.122|30000|GSL Networks|Bangalore, IN (10G)|IPv4
+# 缺口: 首尔/大阪/台北/曼谷/吉隆坡/胡志明 未见稳定公开 iperf3; 孟买以班加罗尔(同印度方向)代理。
+
+#GROUP:欧洲
+iperf3-vie-at.alwyzon.net|5201-5208|Alwyzon|Vienna, AT (100G)|IPv4|IPv6
+iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6
+iperf.online.net|5200-5209|Scaleway|Paris, FR (100G)|IPv4|IPv6
+speedtest.wtnet.de|5200-5209|wilhelm.tel|Norderstedt, DE (40G)|IPv4|IPv6
+fra.speedtest.clouvider.net|5200-5209|Clouvider|Frankfurt, DE (10G)|IPv4|IPv6
 lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6
+iperf3.stockholm.seacomnet.com|5200-5209|SEACOM|Stockholm, SE (1G)|IPv4|IPv6
+185.246.208.67|5201|CDN77|Warsaw, PL (20G)|IPv4
+84.17.59.129|5201|CDN77|Milan, IT (20G)|IPv4
+185.93.3.50|5201|CDN77|Madrid, ES (20G)|IPv4
+
+#GROUP:北美
+speedtest.nocix.net|5201-5205|Nocix|Kansas City, MO (200G)|IPv4|IPv6
 iperf-mci.advinservers.com|5201-5240|Advin Servers|Kansas City, MO (40G)|IPv4|IPv6
 la.speedtest.clouvider.net|5200-5209|Clouvider|Los Angeles, CA, US (10G)|IPv4|IPv6
 speedtest.nyc1.us.leaseweb.net|5201-5210|Leaseweb|NYC, NY, US (10G)|IPv4|IPv6
-speedtest.uztelecom.uz|5200-5209|Uztelecom|Tashkent, UZ (10G)|IPv4|IPv6
+speedtest.chi11.us.leaseweb.net|5201-5210|Leaseweb|Chicago, IL, US (10G)|IPv4|IPv6
+speedtest.dal13.us.leaseweb.net|5201-5210|Leaseweb|Dallas, TX, US (10G)|IPv4|IPv6
+speedtest.sea11.us.leaseweb.net|5201-5210|Leaseweb|Seattle, WA, US (10G)|IPv4|IPv6
+speedtest.mia11.us.leaseweb.net|5201-5210|Leaseweb|Miami, FL, US (10G)|IPv4|IPv6
+speedtest.mtl2.ca.leaseweb.net|5201-5210|Leaseweb|Montreal, QC, CA (10G)|IPv4|IPv6
+138.199.57.129|5201|CDN77|Toronto, ON, CA (20G)|IPv4
 
-#GROUP:国内节点
-14.119.118.214|5201|青毅云|深圳电信|IPv4
-36.150.232.152|5201|青毅云|江苏移动|IPv4
+#GROUP:南美
+speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6
+138.199.4.1|5201|CDN77|Sao Paulo, BR (20G)|IPv4
+79.127.209.1|5201|CDN77|Santiago, CL (20G)|IPv4
+169.150.228.129|5201|CDN77|Bogota, CO (20G)|IPv4
+152.204.128.194|5201-5220|Movistar|Bogota, CO (10G)|IPv4
+# 缺口: 布宜诺斯艾利斯/利马 未见公开 iperf3 节点(南美公开节点稀疏)。
+
+#GROUP:大洋洲
+speedtest.syd12.au.leaseweb.net|5201-5210|Leaseweb|Sydney, AU (10G)|IPv4|IPv6
+akl.linetest.nz|5300-5309|Linetest|Auckland, NZ (10G)|IPv4|IPv6
+speedtest.lagoon.nc|5202-5210|Lagoon|Noumea, NC (10G)|IPv4|IPv6
+chch.linetest.nz|5300-5309|Linetest|Christchurch, NZ (10G)|IPv4|IPv6
+syd.proof.ovh.net|5201-5210|OVH|Sydney, AU (1G)|IPv4|IPv6
+# 缺口: 墨尔本/珀斯 未见稳定公开 iperf3 节点。
+
+#GROUP:非洲
+iperf3.johannesburg.seacomnet.com|5200-5209|SEACOM|Johannesburg, ZA (1G)|IPv4|IPv6
+iperf3.cape-town.seacomnet.com|5200-5209|SEACOM|Cape Town, ZA (1G)|IPv4|IPv6
+iperf3.nairobi.seacomnet.com|5200-5209|SEACOM|Nairobi, KE (1G)|IPv4|IPv6
+iperf3.dar-es-salaam.seacomnet.com|5200-5209|SEACOM|Dar es Salaam, TZ (1G)|IPv4|IPv6
+213.158.175.240|5201|CDN77|Cairo, EG (10G)|IPv4
+# 缺口: 拉各斯(西非)未见公开 iperf3; 最近公开节点为阿克拉(加纳, 102.214.66.19)。
