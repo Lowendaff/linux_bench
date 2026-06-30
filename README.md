@@ -2,7 +2,7 @@
 
 **Linux Bench** 是一个综合性的 Linux 服务器性能测试与网络质量检测脚本。它集成了业界主流的测试工具，旨在为用户提供一键式的硬件性能评估、网络连通性测试及流媒体服务解锁检测。
 
-本项目特别针对服务器维护者设计，支持多种测试模式，并包含自动维护机制以确保测试数据的准确性。
+本项目特别针对服务器维护者设计，默认运行全部测试、可用 `--skip-xxx` 按需跳过，并包含自动维护机制以确保测试数据的准确性。
 
 ## 📚 项目概述
 
@@ -95,8 +95,6 @@ sudo ./linux_bench.sh --skip-gb                            # 全部但跳过最�
 sudo ./linux_bench.sh --skip-speedtest --skip-trace --skip-forward   # 不测速、不追踪
 sudo ./linux_bench.sh --skip-netinfo                      # 关网络信息（级联），只剩硬件 + cf/apple
 ```
-
-> ⚠️ 旧的「套餐」flag（`-n` `-h`(硬件) `-t` `-i` `-s` `-f` `-p` `--speedtest`）已移除：现在默认全开，请改用 `--skip-xxx` 关单项；传入旧 flag 会报错并提示。**`-h` 现在是 `--help`**。
 
 ### 3. 修饰选项
 
