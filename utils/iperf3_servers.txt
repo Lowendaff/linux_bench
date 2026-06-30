@@ -29,7 +29,6 @@ iperf.online.net|5200-5209|Scaleway|Paris, FR (100G)|IPv4|IPv6
 speedtest.wtnet.de|5200-5209|wilhelm.tel|Norderstedt, DE (40G)|IPv4|IPv6
 fra.speedtest.clouvider.net|5200-5209|Clouvider|Frankfurt, DE (10G)|IPv4|IPv6
 lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6
-iperf3.stockholm.seacomnet.com|5200-5209|SEACOM|Stockholm, SE (1G)|IPv4|IPv6
 185.246.208.67|5201|CDN77|Warsaw, PL (20G)|IPv4
 84.17.59.129|5201|CDN77|Milan, IT (20G)|IPv4
 185.93.3.50|5201|CDN77|Madrid, ES (20G)|IPv4
@@ -51,8 +50,8 @@ speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6
 138.199.4.1|5201|CDN77|Sao Paulo, BR (20G)|IPv4
 79.127.209.1|5201|CDN77|Santiago, CL (20G)|IPv4
 169.150.228.129|5201|CDN77|Bogota, CO (20G)|IPv4
-152.204.128.194|5201-5220|Movistar|Bogota, CO (10G)|IPv4
 # 缺口: 布宜诺斯艾利斯/利马 未见公开 iperf3 节点(南美公开节点稀疏)。
+# 移除(测试机 45.146.243.36 不可达): 152.204.128.194 Movistar Bogota(电信节点疑似地域限制)。
 
 #GROUP:大洋洲
 speedtest.syd12.au.leaseweb.net|5201-5210|Leaseweb|Sydney, AU (10G)|IPv4|IPv6
@@ -63,9 +62,8 @@ syd.proof.ovh.net|5201-5210|OVH|Sydney, AU (1G)|IPv4|IPv6
 # 缺口: 墨尔本/珀斯 未见稳定公开 iperf3 节点。
 
 #GROUP:非洲
-iperf3.johannesburg.seacomnet.com|5200-5209|SEACOM|Johannesburg, ZA (1G)|IPv4|IPv6
-iperf3.cape-town.seacomnet.com|5200-5209|SEACOM|Cape Town, ZA (1G)|IPv4|IPv6
-iperf3.nairobi.seacomnet.com|5200-5209|SEACOM|Nairobi, KE (1G)|IPv4|IPv6
-iperf3.dar-es-salaam.seacomnet.com|5200-5209|SEACOM|Dar es Salaam, TZ (1G)|IPv4|IPv6
 213.158.175.240|5201|CDN77|Cairo, EG (10G)|IPv4
 # 缺口: 拉各斯(西非)未见公开 iperf3; 最近公开节点为阿克拉(加纳, 102.214.66.19)。
+# 移除(测试机 45.146.243.36 全部 timed out,疑似 SEACOM 网络对该出口地域路由不可达):
+#   iperf3.{johannesburg,cape-town,nairobi,dar-es-salaam}.seacomnet.com(均为真实 SEACOM 节点)。
+#   若你的服务器能直连 SEACOM(非洲方向路由),可自行加回。
