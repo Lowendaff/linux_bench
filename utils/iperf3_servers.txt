@@ -6,6 +6,12 @@
 #   - 来源: R0GGER/public-iperf3-servers(社区监控列表, 30 天可用率>90%)、SEACOM as37100.net、
 #     各机房公开端点(Leaseweb/Clouvider/Scaleway/Alwyzon/Eranium/Advin/Nocix 等)。
 #     裸 IP 的运营商经反向 DNS/whois 核实(CDN77=*.cdn77.com PTR; GSL Networks; Movistar)。
+#     公共 Looking Glass 端点(AlexHost/Gigahost/Level66/Astra/NetOps.me/Host.al/Schleyer-EDV/KampoengDigital):
+#     端口默认 5201(Gigahost 为 9201-9240,余见行内标注);IPv6 经权威 DNS(@1.1.1.1)核实 AAAA 后才标注。
+#     带宽除 AlexHost=10G、Gigahost=100G 有明确标称外,余为机房 best-effort 估值(各 LG 提供至 10G 测试文件),按实测可校正。
+#     以上节点在 45.146.243.36(HK)以 iperf3 -P 8 实测 send+recv 通过。移除(实测 -P 8 挂起/拒绝):
+#     speedtest.k.pl(control socket closed)、lg.avenacloud.com、sgp.lg.vebble.com(5201 开放但无可用 iperf3);
+#     *.serverpoint.com 全部(DNS 轮换共享 IP 池、含连接数防火墙,-P 8 挂起)。
 #   - 默认(无 --iperf-region/--iperf-all)仅全测「亚太」组; 其余地区按 top-N 选取。
 
 #GROUP:亚太
@@ -15,6 +21,7 @@ speedtest.tyo11.jp.leaseweb.net|5201-5210|Leaseweb|Tokyo, JP (10G)|IPv4|IPv6
 speedtest.uztelecom.uz|5200-5209|Uztelecom|Tashkent, UZ (10G)|IPv4|IPv6
 iperf.pendc.com|5201-5209|PenDC|Bursa, TR (10G)|IPv4|IPv6
 iperf.scbd.net.id|5201-5209|SCBD|Jakarta, ID (1G)|IPv4|IPv6
+lg.kampoengdigital.net|5201|KampoengDigital|Manado, ID (10G)|IPv4|IPv6
 sgp.proof.ovh.net|5201-5210|OVH|Singapore, SG (1G)|IPv4
 84.17.57.129|5201|CDN77|Hong Kong, HK (20G)|IPv4
 89.187.160.1|5201|CDN77|Tokyo, JP (20G)|IPv4
@@ -28,10 +35,23 @@ iperf-ams-nl.eranium.net|5201-5210|Eranium|Amsterdam, NL (100G)|IPv4|IPv6
 iperf.online.net|5200-5209|Scaleway|Paris, FR (100G)|IPv4|IPv6
 speedtest.wtnet.de|5200-5209|wilhelm.tel|Norderstedt, DE (40G)|IPv4|IPv6
 fra.speedtest.clouvider.net|5200-5209|Clouvider|Frankfurt, DE (10G)|IPv4|IPv6
-lon.speedtest.clouvider.net|5200-5209|Clouvider|London, UK (10G)|IPv4|IPv6
+speedtest.level66.services|5201-5205|Level66|Frankfurt, DE (10G)|IPv4|IPv6
+iperf.astra.in.ua|5201-5206|Astra|Lviv, UA (10G)|IPv4|IPv6
+as16661.net|5201|Hack This LLC|Amsterdam, NL (10G)|IPv4|IPv6
+speedtest.iway.ch|5201|iWay|Zurich, CH (10G)|IPv4|IPv6
+lg-ch.alexhost.com|5201|AlexHost|Zurich, CH (10G)|IPv4|IPv6
+lg-fr.alexhost.com|5201|AlexHost|Velizy, FR (10G)|IPv4|IPv6
+lg-uk.alexhost.com|5201|AlexHost|London, UK (10G)|IPv4|IPv6
+lg-ro.alexhost.com|5201|AlexHost|Bucharest, RO (10G)|IPv4|IPv6
+lg.schleyer-edv.de|5201|Schleyer-EDV|Dusseldorf, DE (10G)|IPv4|IPv6
+lg.gigahost.no|9201-9240|Gigahost|Sandefjord, NO (100G)|IPv4
+lg.ams-nl.gigahost.no|9201-9240|Gigahost|Amsterdam, NL (100G)|IPv4
+speedtest.alexhost.com|5201|AlexHost|Chisinau, MD (10G)|IPv4
+lg.host.al|5201|Host.al|Tirana, AL (10G)|IPv4
 185.246.208.67|5201|CDN77|Warsaw, PL (20G)|IPv4
 84.17.59.129|5201|CDN77|Milan, IT (20G)|IPv4
-185.93.3.50|5201|CDN77|Madrid, ES (20G)|IPv4
+# 移除(测试机 45.146.243.36[HK] 实测持续不可用,冷却后仍失败): lon.speedtest.clouvider.net(iperf3 无响应/挂起)、
+#   185.93.3.50 CDN77 Madrid(unable to receive control message / server may have stopped)。从 EU 出口或可用,可自行加回。
 
 #GROUP:北美
 speedtest.nocix.net|5201-5205|Nocix|Kansas City, MO (200G)|IPv4|IPv6
@@ -43,15 +63,17 @@ speedtest.dal13.us.leaseweb.net|5201-5210|Leaseweb|Dallas, TX, US (10G)|IPv4|IPv
 speedtest.sea11.us.leaseweb.net|5201-5210|Leaseweb|Seattle, WA, US (10G)|IPv4|IPv6
 speedtest.mia11.us.leaseweb.net|5201-5210|Leaseweb|Miami, FL, US (10G)|IPv4|IPv6
 speedtest.mtl2.ca.leaseweb.net|5201-5210|Leaseweb|Montreal, QC, CA (10G)|IPv4|IPv6
+lg-us.alexhost.com|5201|AlexHost|Las Vegas, NV, US (10G)|IPv4|IPv6
+lg.lax.netops.me|5201|NetOps.me|Los Angeles, CA, US (10G)|IPv4|IPv6
 138.199.57.129|5201|CDN77|Toronto, ON, CA (20G)|IPv4
 
 #GROUP:南美
 speedtest.sao1.edgoo.net|9204-9240|Edgoo|Sao Paulo, BR (1G)|IPv4|IPv6
 138.199.4.1|5201|CDN77|Sao Paulo, BR (20G)|IPv4
 79.127.209.1|5201|CDN77|Santiago, CL (20G)|IPv4
-169.150.228.129|5201|CDN77|Bogota, CO (20G)|IPv4
 # 缺口: 布宜诺斯艾利斯/利马 未见公开 iperf3 节点(南美公开节点稀疏)。
-# 移除(测试机 45.146.243.36 不可达): 152.204.128.194 Movistar Bogota(电信节点疑似地域限制)。
+# 移除(测试机 45.146.243.36 不可达): 152.204.128.194 Movistar Bogota(电信节点疑似地域限制)、
+#   169.150.228.129 CDN77 Bogota(iperf3 server may have stopped,冷却后仍不可用)。
 
 #GROUP:大洋洲
 speedtest.syd12.au.leaseweb.net|5201-5210|Leaseweb|Sydney, AU (10G)|IPv4|IPv6
