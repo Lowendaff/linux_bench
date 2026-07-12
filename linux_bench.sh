@@ -135,40 +135,6 @@ print_usage() {
 USAGE
 }
 
-print_feature_list() {
-    cat <<'FEATURES'
-功能开关（默认全部启用，可叠加使用）:
-  --skip-sysinfo        跳过系统信息（CPU、内存、磁盘、系统与虚拟化信息）
-  --skip-netinfo        跳过网络信息，并级联跳过 BGP、IP 质量、服务解锁、iperf3 和路由追踪
-  --skip-bgp            跳过 IPv4/IPv6 BGP 透视
-  --skip-ip-quality     跳过 IPv4 欺诈、滥用、机房、原生、VPN、代理及 Tor 检测
-  --skip-service        跳过流媒体、游戏平台及 AIGC 服务解锁检测
-  --skip-cpu            跳过 sysbench CPU 单线程与多线程测试
-  --skip-gb             跳过 Geekbench 6 综合基准测试
-  --skip-disk           跳过 fio 4K 随机及 128K 顺序读写测试
-  --skip-iperf          跳过 iperf3 多地区双向带宽测试
-  --skip-cloudflare     跳过 Cloudflare CDN 速度与延迟测试
-  --skip-apple          跳过 Apple CDN 速度与延迟测试
-  --skip-trace          跳过 IPv4/IPv6 回程路由追踪（中国/公共服务 TCP，海外静态节点 ICMP）
-  --skip-forward        跳过全球节点 ICMP 去程路由追踪
-
-组合开关:
-  --skip-hardware       跳过全部硬件测试（CPU + Geekbench 6 + 磁盘）
-  --skip-speedtest      跳过全部测速（iperf3 + Cloudflare + Apple CDN）
-
-运行选项:
-  -4                    仅运行 IPv4 相关测试
-  -6                    仅运行 IPv6 相关测试
-  --raw                 保留原始地名和运营商名称（默认）
-  --normalize           标准化地名后缀和运营商名称
-  --fix-dns             测试期间临时使用公共 DNS，结束时恢复原配置
-  --iperf-all           iperf3 全部 6 个地区全测
-  --iperf-region=<码>   iperf3 只测指定地区，支持 AS/EU/NA/SA/OC/AF，多个用逗号分隔
-  --iperf-per-region=N  限制非亚太地区每区最多 N 个节点（默认 5，亚太不受限制）
-  -h, --help            显示完整帮助并退出
-FEATURES
-}
-
 # 参数解析:默认全开,--skip-xxx 关单项;顺序无关(在 main 中调用)
 parse_args() {
     while [ $# -gt 0 ]; do
@@ -316,6 +282,7 @@ cleanup() {
         log "清理本次安装的依赖..."
         echo "  ├─ 卸载: ${CLEANUP_PKGS[*]}"
         apt-get remove -y "${CLEANUP_PKGS[@]}" >/dev/null 2>&1 || true
+        apt-get autoremove -y >/dev/null 2>&1 || true
         echo -e "  └─ 清理完成 ${GREEN}✓${NC}"
     fi
 
@@ -483,12 +450,6 @@ check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Debian/Ubuntu 包安装状态必须由 dpkg 判断，不能把包名当作命令名检查。
-# 例如 xz-utils 提供的是 xz 命令；command -v xz-utils 会把已安装包误判为缺失。
-is_package_installed() {
-    [ "$(dpkg-query -W -f='${Status}' "$1" 2>/dev/null)" = "install ok installed" ]
-}
-
 # NextTrace Token:不再硬编码。若用户通过环境变量提供则使用之，
 # 否则 nexttrace 以无 token 模式运行（地理数据可能受限）。
 setup_nexttrace_token() {
@@ -589,10 +550,10 @@ ensure_dependencies() {
     local missing_pkgs=""
     local installed_pkgs=""
 
-    # 1. 检查缺失的包。使用 dpkg 状态，确保只记录安装前确实不存在的包。
+    # 1. 检查缺失的包
     # shellcheck disable=SC2086 # 故意词分割: 包列表
     for pkg in $target_pkgs; do
-        if is_package_installed "$pkg"; then
+        if check_cmd "$pkg"; then
             installed_pkgs="$installed_pkgs $pkg"
         else
             missing_pkgs="$missing_pkgs $pkg"
@@ -624,13 +585,9 @@ ensure_dependencies() {
         # shellcheck disable=SC2086 # 故意词分割: 包列表
         if apt-get install -y -q $missing_pkgs >/dev/null 2>&1; then
             echo -e " ${GREEN}完成${NC}"
-            # 只记录安装前不存在、且现在已成功安装的包，以便精确清理。
+            # 记录安装的包以便清理
             # shellcheck disable=SC2086 # 故意词分割: 包列表
-            for p in $missing_pkgs; do
-                if is_package_installed "$p"; then
-                    CLEANUP_PKGS+=("$p")
-                fi
-            done
+            for p in $missing_pkgs; do CLEANUP_PKGS+=("$p"); done
         else
             echo -e " ${RED}失败${NC}"
             fail "依赖安装失败，请检查网络或软件源配置。"
@@ -2510,41 +2467,6 @@ ${stream_output_v6}"
 # =========================
 # Traceroute
 # =========================
-normalize_trace_port() {
-    local port="${1:-80}"
-    if is_uint "$port" && [ "$port" -ge 1 ] && [ "$port" -le 65535 ]; then
-        echo "$port"
-    else
-        echo "80"
-    fi
-}
-
-# 将静态目标的外部格式转换成统一的内部双栈/协议格式。
-# 新格式: 名称|IPv4/主机名|TCP端口
-# 兼容旧格式: 名称|IPv4/主机名|IPv6目标|TCP端口（IPv6字段会被忽略）
-normalize_static_trace_target() {
-    local line="$1"
-    local protocol="${2:-tcp}"
-    local name target third_field fourth_field port
-
-    IFS='|' read -r name target third_field fourth_field <<< "$line"
-    [ -n "$name" ] && [ -n "$target" ] || return 1
-
-    if [ -n "$fourth_field" ]; then
-        port="$fourth_field"
-    else
-        port="$third_field"
-    fi
-    port=$(normalize_trace_port "$port")
-
-    case "$protocol" in
-        tcp|icmp) ;;
-        *) return 1 ;;
-    esac
-
-    printf '%s|%s||%s|%s\n' "$name" "$target" "$port" "$protocol"
-}
-
 create_ix_map() {
     local map_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/nf_ix_map.txt"
     # 直接下载并覆盖，带重试机制
@@ -2791,24 +2713,15 @@ get_trace_targets() {
         # 如果下载失败，使用内置的基础目标
         cat << 'FALLBACK_EOF'
 #GROUP:中国境内目标
-北京电信 CN2 AS4809|218.30.179.14|161
-北京电信 163 AS4134|106.38.57.170|3306
-北京联通 169 AS4837|123.125.6.2|8474
-北京联通 A网(CNC) AS9929|114.254.5.51|8099
-北京移动 CMNET AS9808|211.136.31.174|443
-北京移动 CMIN2 AS58807|223.72.7.19|8443
-上海电信 CN2 AS4809|58.32.4.57|9022
-上海电信 163 AS4134|210.5.152.34|8889
-上海联通 169 AS4837|139.226.121.10|8888
-上海联通 A网(CNC) AS9929|210.13.66.246|47001
-上海移动 CMNET AS9808|120.204.38.64|10027
-上海移动 CMIN2 AS58807|117.135.123.38|23
-广州电信 CN2 AS4809|116.6.7.14|8887
-广州电信 163 AS4134|14.22.48.12|8001
-广州联通 169 AS4837|27.40.0.6|13248
-广州联通 A网(CNC) AS9929|58.248.18.21|707
-广州移动 CMNET AS9808|211.136.197.153|81
-广州移动 CMIN2 AS58807|120.236.114.59|28382
+北京电信 163 AS4134|ipv4.pek-4134.endpoint.nxtrace.org|ipv6.pek-4134.endpoint.nxtrace.org
+北京联通 169 AS4837|ipv4.pek-4837.endpoint.nxtrace.org|ipv6.pek-4837.endpoint.nxtrace.org
+北京移动 CMNET AS9808|ipv4.pek-9808.endpoint.nxtrace.org|ipv6.pek-9808.endpoint.nxtrace.org
+上海电信 163 AS4134|ipv4.sha-4134.endpoint.nxtrace.org|ipv6.sha-4134.endpoint.nxtrace.org
+上海联通 169 AS4837|ipv4.sha-4837.endpoint.nxtrace.org|ipv6.sha-4837.endpoint.nxtrace.org
+上海移动 CMNET AS9808|ipv4.sha-9808.endpoint.nxtrace.org|ipv6.sha-9808.endpoint.nxtrace.org
+广州电信 163 AS4134|ipv4.can-4134.endpoint.nxtrace.org|ipv6.can-4134.endpoint.nxtrace.org
+广州联通 169 AS4837|ipv4.can-4837.endpoint.nxtrace.org|ipv6.can-4837.endpoint.nxtrace.org
+广州移动 CMNET AS9808|ipv4.can-9808.endpoint.nxtrace.org|ipv6.can-9808.endpoint.nxtrace.org
 FALLBACK_EOF
         return
     fi
@@ -2847,7 +2760,7 @@ run_trace_test() {
             local yt_err="$TMP_DIR/yt_v4.err"
             local v4=$("$YTDLP_BIN" $yt_args -4 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v4" ]; then
-                 dynamic_targets+="YouTube CDN (Dynamic)|$v4||80"$'\n'
+                 dynamic_targets+="YouTube CDN (Dynamic)|$v4|"$'\n'
             else
                  # If failed, print warning with error content
                  local err_msg=$(cat "$yt_err" | tr '\n' ' ' | cut -c 1-100)
@@ -2859,7 +2772,7 @@ run_trace_test() {
             local yt_err="$TMP_DIR/yt_v6.err"
             local v6=$("$YTDLP_BIN" $yt_args -6 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v6" ]; then
-                dynamic_targets+="YouTube CDN (Dynamic)||$v6|80"$'\n'
+                dynamic_targets+="YouTube CDN (Dynamic)||$v6"$'\n'
             else
                  local err_msg=$(cat "$yt_err" | tr '\n' ' ' | cut -c 1-100)
                  warn "  │  └─ YouTube (IPv6) 获取失败: $err_msg"
@@ -2873,11 +2786,11 @@ run_trace_test() {
     local nf_api="https://api.fast.com/netflix/speedtest/v2?https=true&token=YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm&urlCount=5"
     if [ "$HAS_V4" = "true" ]; then
         local nf=$(curl -s -4 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv4"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
-        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)|$nf||80"$'\n'
+        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)|$nf|"$'\n'
     fi
     if [ "$HAS_V6" = "true" ]; then
         local nf=$(curl -s -6 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv6"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
-        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)||$nf|80"$'\n'
+        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)||$nf"$'\n'
     fi
 
     # 构建目标列表
@@ -2896,14 +2809,14 @@ run_trace_test() {
 
     # 公共 DNS 服务
     if [ "$HAS_V4" = "true" ]; then
-        public_targets+="Cloudflare DNS|1.1.1.1||53"$'\n'
-        public_targets+="Google DNS|8.8.8.8||53"$'\n'
-        public_targets+="Quad9 DNS|9.9.9.9||53"$'\n'
+        public_targets+="Cloudflare DNS|1.1.1.1|"$'\n'
+        public_targets+="Google DNS|8.8.8.8|"$'\n'
+        public_targets+="Quad9 DNS|9.9.9.9|"$'\n'
     fi
     if [ "$HAS_V6" = "true" ]; then
-        public_targets+="Cloudflare DNS||2606:4700:4700::1111|53"$'\n'
-        public_targets+="Google DNS||2001:4860:4860::8888|53"$'\n'
-        public_targets+="Quad9 DNS||2620:fe::fe|53"$'\n'
+        public_targets+="Cloudflare DNS||2606:4700:4700::1111"$'\n'
+        public_targets+="Google DNS||2001:4860:4860::8888"$'\n'
+        public_targets+="Quad9 DNS||2620:fe::fe"$'\n'
     fi
 
     # 添加动态 CDN 目标
@@ -2926,14 +2839,7 @@ run_trace_test() {
             # 将分组标记添加到目标数组中
             all_targets+=("#GROUP:$current_group")
         else
-            # 静态目标支持 IP/主机名和独立端口，并转换为内部统一格式。
-            local normalized_static static_protocol="icmp"
-            [ "$current_group" = "中国境内目标" ] && static_protocol="tcp"
-            if normalized_static=$(normalize_static_trace_target "$line" "$static_protocol"); then
-                all_targets+=("$normalized_static")
-            else
-                warn "  │  └─ 跳过无效静态目标: $line"
-            fi
+            all_targets+=("$line")
         fi
     done <<< "$raw_static"
 
@@ -2973,7 +2879,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port _t_protocol <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 <<< "$next_entry"
                     # Count IPv4 test if enabled and target exists
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     # Count IPv6 test if enabled and target exists
@@ -2991,7 +2897,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port _t_protocol <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 <<< "$next_entry"
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     if [ -n "$_t_v6" ] && [ "$HAS_V6" = "true" ]; then total=$((total+1)); fi
                 fi
@@ -2999,11 +2905,7 @@ run_trace_test() {
         fi
 
         # idx=$((idx+1))  <-- Remove here, increment inside test loop
-        local target_port=""
-        local trace_protocol=""
-        IFS='|' read -r name ipv4 ipv6 target_port trace_protocol <<< "$entry"
-        target_port=$(normalize_trace_port "$target_port")
-        trace_protocol="${trace_protocol:-tcp}"
+        IFS='|' read -r name ipv4 ipv6 <<< "$entry"
 
         for mode in IPv4 IPv6; do
             local target=""
@@ -3013,9 +2915,7 @@ run_trace_test() {
             # 只有当 目标存在 且 (是IPv4且有V4网 OR 是IPv6且有V6网) 时才测试
             if [ -n "$target" ] && { ([ "$mode" = "IPv4" ] && [ "$HAS_V4" = "true" ]) || ([ "$mode" = "IPv6" ] && [ "$HAS_V6" = "true" ]); }; then
                 idx=$((idx+1))
-                local probe_label="ICMP"
-                [ "$trace_protocol" = "tcp" ] && probe_label="TCP/$target_port"
-                echo "  │  ├─ [$idx/$total] $name ($mode, $probe_label)..."
+                echo "  │  ├─ [$idx/$total] $name ($mode)..."
                 local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
 
                 # 运行 nexttrace
@@ -3023,11 +2923,7 @@ run_trace_test() {
                 local err_out=""
                 # Capture stdout and stderr
                 local err_file="$TMP_DIR/nt_err_$idx.log"
-                if [ "$trace_protocol" = "icmp" ]; then
-                    raw_output=$("$NEXTTRACE_BIN" --json $ipflag "$target" 2>"$err_file")
-                else
-                    raw_output=$("$NEXTTRACE_BIN" --json --tcp --port "$target_port" --psize 1400 $ipflag "$target" 2>"$err_file")
-                fi
+                raw_output=$("$NEXTTRACE_BIN" --json $ipflag "$target" 2>"$err_file")
                 err_out=$(cat "$err_file" 2>/dev/null)
                 rm -f "$err_file"
 
@@ -3135,8 +3031,6 @@ run_trace_test() {
                         # === Streaming Report (Trace Item) ===
                         {
                             echo "#### $name ($mode)"
-                            echo "探测协议: \`$probe_label\`"
-                            echo ""
                             # 如果是动态 CDN 目标，显示解析到的域名
                             if [[ "$name" == *"Dynamic"* ]]; then
                                 echo "命中 CDN 节点: \`$target\`"
@@ -3252,7 +3146,7 @@ FALLBACK_EOF
 
         echo "  │  ├─ [$idx/$total] 从 $name 追踪..."
 
-        # 运行 nexttrace --from，使用默认的 ICMP 探测协议。
+        # 运行 nexttrace --from
         local raw_output=""
         local err_file="$TMP_DIR/nt_fwd_err_$idx.log"
         raw_output=$("$NEXTTRACE_BIN" --json --from "$from_param" "$my_ipv4" 2>"$err_file")
@@ -3370,11 +3264,27 @@ main() {
 EOF
     echo -e "${NC}"
 
-    # 功能与开关说明
+    # 提示
     echo -e "==> 欢迎使用 Lowendaff LinuxBench，这是一个综合的测试工具"
-    echo -e ""
-    print_feature_list
-    echo -e ""
+    echo -e "\n--- 默认运行全部测试;用 --skip-xxx 关闭单项,例如:"
+    echo -e "      --skip-gb        跳过最慢的 Geekbench 6"
+    echo -e "      --skip-speedtest 跳过全部测速 (iperf3 + Cloudflare + Apple)"
+    echo -e "      --skip-trace --skip-forward   跳过路由追踪"
+    echo -e "  -4 / -6              仅 IPv4 / 仅 IPv6"
+    echo -e "      --fix-dns        测试期间临时覆盖系统 DNS"
+    echo -e "      --iperf-region=EU,NA  iperf3 只测指定地区(默认仅亚太);--iperf-all 全测"
+    echo -e "  -h, --help           查看完整选项列表\n"
+
+    # 致谢
+    echo -e "[*] 感谢 JamChoi 提供的 Python 源码"
+    echo -e "[+] 由我（神秘人）驾驶着 Google Antigravity 进行改写和扩展"
+    echo -e "[>] 本项目依赖 Geekbench 6 进行 CPU 性能测试"
+    echo -e "[>] 本项目依赖 kavehtehrani/cloudflare-speed-cli 进行网络测速"
+    echo -e "[>] 本项目依赖 tsosunchia/iNetSpeed-CLI 进行 Apple CDN 测速"
+    echo -e "[>] 本项目依赖 1-stream/RegionRestrictionCheck 进行服务解锁测试"
+    echo -e "[>] 本项目依赖 nxtrace/NTrace-core 进行路由追踪"
+    echo -e "[i] IP 信息来源于 ipapi.co，ipapi.is，ippure.com 和 PeeringDB"
+    echo -e "[✓] 测试结束时自动清理，干干净净（我有洁癖）"
     echo -e "[*] 访问我们的网站 https://lowendaff.com"
     echo -e "[*] 关注我们的 Telegram 频道 https://t.me/lowendaff_blog"
     echo -e ""
