@@ -135,6 +135,40 @@ print_usage() {
 USAGE
 }
 
+print_feature_list() {
+    cat <<'FEATURES'
+功能开关（默认全部启用，可叠加使用）:
+  --skip-sysinfo        跳过系统信息（CPU、内存、磁盘、系统与虚拟化信息）
+  --skip-netinfo        跳过网络信息，并级联跳过 BGP、IP 质量、服务解锁、iperf3 和路由追踪
+  --skip-bgp            跳过 IPv4/IPv6 BGP 透视
+  --skip-ip-quality     跳过 IPv4 欺诈、滥用、机房、原生、VPN、代理及 Tor 检测
+  --skip-service        跳过流媒体、游戏平台及 AIGC 服务解锁检测
+  --skip-cpu            跳过 sysbench CPU 单线程与多线程测试
+  --skip-gb             跳过 Geekbench 6 综合基准测试
+  --skip-disk           跳过 fio 4K 随机及 128K 顺序读写测试
+  --skip-iperf          跳过 iperf3 多地区双向带宽测试
+  --skip-cloudflare     跳过 Cloudflare CDN 速度与延迟测试
+  --skip-apple          跳过 Apple CDN 速度与延迟测试
+  --skip-trace          跳过 IPv4/IPv6 TCP 回程路由追踪
+  --skip-forward        跳过全球节点 TCP 去程路由追踪
+
+组合开关:
+  --skip-hardware       跳过全部硬件测试（CPU + Geekbench 6 + 磁盘）
+  --skip-speedtest      跳过全部测速（iperf3 + Cloudflare + Apple CDN）
+
+运行选项:
+  -4                    仅运行 IPv4 相关测试
+  -6                    仅运行 IPv6 相关测试
+  --raw                 保留原始地名和运营商名称（默认）
+  --normalize           标准化地名后缀和运营商名称
+  --fix-dns             测试期间临时使用公共 DNS，结束时恢复原配置
+  --iperf-all           iperf3 全部 6 个地区全测
+  --iperf-region=<码>   iperf3 只测指定地区，支持 AS/EU/NA/SA/OC/AF，多个用逗号分隔
+  --iperf-per-region=N  限制非亚太地区每区最多 N 个节点（默认 5，亚太不受限制）
+  -h, --help            显示完整帮助并退出
+FEATURES
+}
+
 # 参数解析:默认全开,--skip-xxx 关单项;顺序无关(在 main 中调用)
 parse_args() {
     while [ $# -gt 0 ]; do
@@ -3273,27 +3307,11 @@ main() {
 EOF
     echo -e "${NC}"
 
-    # 提示
+    # 功能与开关说明
     echo -e "==> 欢迎使用 Lowendaff LinuxBench，这是一个综合的测试工具"
-    echo -e "\n--- 默认运行全部测试;用 --skip-xxx 关闭单项,例如:"
-    echo -e "      --skip-gb        跳过最慢的 Geekbench 6"
-    echo -e "      --skip-speedtest 跳过全部测速 (iperf3 + Cloudflare + Apple)"
-    echo -e "      --skip-trace --skip-forward   跳过路由追踪"
-    echo -e "  -4 / -6              仅 IPv4 / 仅 IPv6"
-    echo -e "      --fix-dns        测试期间临时覆盖系统 DNS"
-    echo -e "      --iperf-region=EU,NA  iperf3 只测指定地区(默认仅亚太);--iperf-all 全测"
-    echo -e "  -h, --help           查看完整选项列表\n"
-
-    # 致谢
-    echo -e "[*] 感谢 JamChoi 提供的 Python 源码"
-    echo -e "[+] 由我（神秘人）驾驶着 Google Antigravity 进行改写和扩展"
-    echo -e "[>] 本项目依赖 Geekbench 6 进行 CPU 性能测试"
-    echo -e "[>] 本项目依赖 kavehtehrani/cloudflare-speed-cli 进行网络测速"
-    echo -e "[>] 本项目依赖 tsosunchia/iNetSpeed-CLI 进行 Apple CDN 测速"
-    echo -e "[>] 本项目依赖 1-stream/RegionRestrictionCheck 进行服务解锁测试"
-    echo -e "[>] 本项目依赖 nxtrace/NTrace-core 进行路由追踪"
-    echo -e "[i] IP 信息来源于 ipapi.co，ipapi.is，ippure.com 和 PeeringDB"
-    echo -e "[✓] 测试结束时自动清理，干干净净（我有洁癖）"
+    echo -e ""
+    print_feature_list
+    echo -e ""
     echo -e "[*] 访问我们的网站 https://lowendaff.com"
     echo -e "[*] 关注我们的 Telegram 频道 https://t.me/lowendaff_blog"
     echo -e ""
