@@ -149,8 +149,8 @@ print_feature_list() {
   --skip-iperf          跳过 iperf3 多地区双向带宽测试
   --skip-cloudflare     跳过 Cloudflare CDN 速度与延迟测试
   --skip-apple          跳过 Apple CDN 速度与延迟测试
-  --skip-trace          跳过 IPv4/IPv6 TCP 回程路由追踪
-  --skip-forward        跳过全球节点 TCP 去程路由追踪
+  --skip-trace          跳过 IPv4/IPv6 TCP 回程路由追踪（DNS 端口 53，CDN/其他端口 80）
+  --skip-forward        跳过全球节点 ICMP 去程路由追踪
 
 组合开关:
   --skip-hardware       跳过全部硬件测试（CPU + Geekbench 6 + 磁盘）
@@ -2510,6 +2510,15 @@ ${stream_output_v6}"
 # =========================
 # Traceroute
 # =========================
+normalize_trace_port() {
+    local port="${1:-80}"
+    if is_uint "$port" && [ "$port" -ge 1 ] && [ "$port" -le 65535 ]; then
+        echo "$port"
+    else
+        echo "80"
+    fi
+}
+
 create_ix_map() {
     local map_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/nf_ix_map.txt"
     # 直接下载并覆盖，带重试机制
@@ -2803,7 +2812,7 @@ run_trace_test() {
             local yt_err="$TMP_DIR/yt_v4.err"
             local v4=$("$YTDLP_BIN" $yt_args -4 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v4" ]; then
-                 dynamic_targets+="YouTube CDN (Dynamic)|$v4|"$'\n'
+                 dynamic_targets+="YouTube CDN (Dynamic)|$v4||80"$'\n'
             else
                  # If failed, print warning with error content
                  local err_msg=$(cat "$yt_err" | tr '\n' ' ' | cut -c 1-100)
@@ -2815,7 +2824,7 @@ run_trace_test() {
             local yt_err="$TMP_DIR/yt_v6.err"
             local v6=$("$YTDLP_BIN" $yt_args -6 "$yt_video" 2>"$yt_err" | head -n1 | awk -F/ '{print $3}')
             if [ -n "$v6" ]; then
-                dynamic_targets+="YouTube CDN (Dynamic)||$v6"$'\n'
+                dynamic_targets+="YouTube CDN (Dynamic)||$v6|80"$'\n'
             else
                  local err_msg=$(cat "$yt_err" | tr '\n' ' ' | cut -c 1-100)
                  warn "  │  └─ YouTube (IPv6) 获取失败: $err_msg"
@@ -2829,11 +2838,11 @@ run_trace_test() {
     local nf_api="https://api.fast.com/netflix/speedtest/v2?https=true&token=YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm&urlCount=5"
     if [ "$HAS_V4" = "true" ]; then
         local nf=$(curl -s -4 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv4"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
-        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)|$nf|"$'\n'
+        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)|$nf||80"$'\n'
     fi
     if [ "$HAS_V6" = "true" ]; then
         local nf=$(curl -s -6 "$nf_api" 2>/dev/null | jq -r '.targets[]|select(.url|contains("ipv6"))|.url' 2>/dev/null | head -n1 | awk -F/ '{print $3}')
-        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)||$nf"$'\n'
+        [ -n "$nf" ] && dynamic_targets+="Netflix CDN (Dynamic)||$nf|80"$'\n'
     fi
 
     # 构建目标列表
@@ -2852,14 +2861,14 @@ run_trace_test() {
 
     # 公共 DNS 服务
     if [ "$HAS_V4" = "true" ]; then
-        public_targets+="Cloudflare DNS|1.1.1.1|"$'\n'
-        public_targets+="Google DNS|8.8.8.8|"$'\n'
-        public_targets+="Quad9 DNS|9.9.9.9|"$'\n'
+        public_targets+="Cloudflare DNS|1.1.1.1||53"$'\n'
+        public_targets+="Google DNS|8.8.8.8||53"$'\n'
+        public_targets+="Quad9 DNS|9.9.9.9||53"$'\n'
     fi
     if [ "$HAS_V6" = "true" ]; then
-        public_targets+="Cloudflare DNS||2606:4700:4700::1111"$'\n'
-        public_targets+="Google DNS||2001:4860:4860::8888"$'\n'
-        public_targets+="Quad9 DNS||2620:fe::fe"$'\n'
+        public_targets+="Cloudflare DNS||2606:4700:4700::1111|53"$'\n'
+        public_targets+="Google DNS||2001:4860:4860::8888|53"$'\n'
+        public_targets+="Quad9 DNS||2620:fe::fe|53"$'\n'
     fi
 
     # 添加动态 CDN 目标
@@ -2922,7 +2931,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port <<< "$next_entry"
                     # Count IPv4 test if enabled and target exists
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     # Count IPv6 test if enabled and target exists
@@ -2940,7 +2949,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port <<< "$next_entry"
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     if [ -n "$_t_v6" ] && [ "$HAS_V6" = "true" ]; then total=$((total+1)); fi
                 fi
@@ -2948,7 +2957,9 @@ run_trace_test() {
         fi
 
         # idx=$((idx+1))  <-- Remove here, increment inside test loop
-        IFS='|' read -r name ipv4 ipv6 <<< "$entry"
+        local target_port=""
+        IFS='|' read -r name ipv4 ipv6 target_port <<< "$entry"
+        target_port=$(normalize_trace_port "$target_port")
 
         for mode in IPv4 IPv6; do
             local target=""
@@ -2958,7 +2969,7 @@ run_trace_test() {
             # 只有当 目标存在 且 (是IPv4且有V4网 OR 是IPv6且有V6网) 时才测试
             if [ -n "$target" ] && { ([ "$mode" = "IPv4" ] && [ "$HAS_V4" = "true" ]) || ([ "$mode" = "IPv6" ] && [ "$HAS_V6" = "true" ]); }; then
                 idx=$((idx+1))
-                echo "  │  ├─ [$idx/$total] $name ($mode)..."
+                echo "  │  ├─ [$idx/$total] $name ($mode, TCP/$target_port)..."
                 local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
 
                 # 运行 nexttrace
@@ -2966,7 +2977,7 @@ run_trace_test() {
                 local err_out=""
                 # Capture stdout and stderr
                 local err_file="$TMP_DIR/nt_err_$idx.log"
-                raw_output=$("$NEXTTRACE_BIN" --json --tcp --psize 1400 $ipflag "$target" 2>"$err_file")
+                raw_output=$("$NEXTTRACE_BIN" --json --tcp --port "$target_port" --psize 1400 $ipflag "$target" 2>"$err_file")
                 err_out=$(cat "$err_file" 2>/dev/null)
                 rm -f "$err_file"
 
@@ -3074,6 +3085,8 @@ run_trace_test() {
                         # === Streaming Report (Trace Item) ===
                         {
                             echo "#### $name ($mode)"
+                            echo "探测协议: \`TCP/$target_port\`"
+                            echo ""
                             # 如果是动态 CDN 目标，显示解析到的域名
                             if [[ "$name" == *"Dynamic"* ]]; then
                                 echo "命中 CDN 节点: \`$target\`"
@@ -3189,10 +3202,10 @@ FALLBACK_EOF
 
         echo "  │  ├─ [$idx/$total] 从 $name 追踪..."
 
-        # 运行 nexttrace --from
+        # 运行 nexttrace --from，使用默认的 ICMP 探测协议。
         local raw_output=""
         local err_file="$TMP_DIR/nt_fwd_err_$idx.log"
-        raw_output=$("$NEXTTRACE_BIN" --json --tcp --psize 1400 --from "$from_param" "$my_ipv4" 2>"$err_file")
+        raw_output=$("$NEXTTRACE_BIN" --json --from "$from_param" "$my_ipv4" 2>"$err_file")
         local err_out=$(cat "$err_file" 2>/dev/null)
         rm -f "$err_file"
 
