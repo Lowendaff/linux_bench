@@ -149,7 +149,7 @@ print_feature_list() {
   --skip-iperf          跳过 iperf3 多地区双向带宽测试
   --skip-cloudflare     跳过 Cloudflare CDN 速度与延迟测试
   --skip-apple          跳过 Apple CDN 速度与延迟测试
-  --skip-trace          跳过 IPv4/IPv6 TCP 回程路由追踪（DNS 端口 53，CDN/其他端口 80）
+  --skip-trace          跳过 IPv4/IPv6 回程路由追踪（中国/公共服务 TCP，海外静态节点 ICMP）
   --skip-forward        跳过全球节点 ICMP 去程路由追踪
 
 组合开关:
@@ -2519,6 +2519,32 @@ normalize_trace_port() {
     fi
 }
 
+# 将静态目标的外部格式转换成统一的内部双栈/协议格式。
+# 新格式: 名称|IPv4/主机名|TCP端口
+# 兼容旧格式: 名称|IPv4/主机名|IPv6目标|TCP端口（IPv6字段会被忽略）
+normalize_static_trace_target() {
+    local line="$1"
+    local protocol="${2:-tcp}"
+    local name target third_field fourth_field port
+
+    IFS='|' read -r name target third_field fourth_field <<< "$line"
+    [ -n "$name" ] && [ -n "$target" ] || return 1
+
+    if [ -n "$fourth_field" ]; then
+        port="$fourth_field"
+    else
+        port="$third_field"
+    fi
+    port=$(normalize_trace_port "$port")
+
+    case "$protocol" in
+        tcp|icmp) ;;
+        *) return 1 ;;
+    esac
+
+    printf '%s|%s||%s|%s\n' "$name" "$target" "$port" "$protocol"
+}
+
 create_ix_map() {
     local map_url="https://raw.githubusercontent.com/Lowendaff/linux_bench/main/utils/nf_ix_map.txt"
     # 直接下载并覆盖，带重试机制
@@ -2765,15 +2791,24 @@ get_trace_targets() {
         # 如果下载失败，使用内置的基础目标
         cat << 'FALLBACK_EOF'
 #GROUP:中国境内目标
-北京电信 163 AS4134|ipv4.pek-4134.endpoint.nxtrace.org|ipv6.pek-4134.endpoint.nxtrace.org
-北京联通 169 AS4837|ipv4.pek-4837.endpoint.nxtrace.org|ipv6.pek-4837.endpoint.nxtrace.org
-北京移动 CMNET AS9808|ipv4.pek-9808.endpoint.nxtrace.org|ipv6.pek-9808.endpoint.nxtrace.org
-上海电信 163 AS4134|ipv4.sha-4134.endpoint.nxtrace.org|ipv6.sha-4134.endpoint.nxtrace.org
-上海联通 169 AS4837|ipv4.sha-4837.endpoint.nxtrace.org|ipv6.sha-4837.endpoint.nxtrace.org
-上海移动 CMNET AS9808|ipv4.sha-9808.endpoint.nxtrace.org|ipv6.sha-9808.endpoint.nxtrace.org
-广州电信 163 AS4134|ipv4.can-4134.endpoint.nxtrace.org|ipv6.can-4134.endpoint.nxtrace.org
-广州联通 169 AS4837|ipv4.can-4837.endpoint.nxtrace.org|ipv6.can-4837.endpoint.nxtrace.org
-广州移动 CMNET AS9808|ipv4.can-9808.endpoint.nxtrace.org|ipv6.can-9808.endpoint.nxtrace.org
+北京电信 CN2 AS4809|218.30.179.14|161
+北京电信 163 AS4134|106.38.57.170|3306
+北京联通 169 AS4837|123.125.6.2|8474
+北京联通 A网(CNC) AS9929|114.254.5.51|8099
+北京移动 CMNET AS9808|211.136.31.174|443
+北京移动 CMIN2 AS58807|223.72.7.19|8443
+上海电信 CN2 AS4809|58.32.4.57|9022
+上海电信 163 AS4134|210.5.152.34|8889
+上海联通 169 AS4837|139.226.121.10|8888
+上海联通 A网(CNC) AS9929|210.13.66.246|47001
+上海移动 CMNET AS9808|120.204.38.64|10027
+上海移动 CMIN2 AS58807|117.135.123.38|23
+广州电信 CN2 AS4809|116.6.7.14|8887
+广州电信 163 AS4134|14.22.48.12|8001
+广州联通 169 AS4837|27.40.0.6|13248
+广州联通 A网(CNC) AS9929|58.248.18.21|707
+广州移动 CMNET AS9808|211.136.197.153|81
+广州移动 CMIN2 AS58807|120.236.114.59|28382
 FALLBACK_EOF
         return
     fi
@@ -2891,7 +2926,14 @@ run_trace_test() {
             # 将分组标记添加到目标数组中
             all_targets+=("#GROUP:$current_group")
         else
-            all_targets+=("$line")
+            # 静态目标支持 IP/主机名和独立端口，并转换为内部统一格式。
+            local normalized_static static_protocol="icmp"
+            [ "$current_group" = "中国境内目标" ] && static_protocol="tcp"
+            if normalized_static=$(normalize_static_trace_target "$line" "$static_protocol"); then
+                all_targets+=("$normalized_static")
+            else
+                warn "  │  └─ 跳过无效静态目标: $line"
+            fi
         fi
     done <<< "$raw_static"
 
@@ -2931,7 +2973,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port _t_protocol <<< "$next_entry"
                     # Count IPv4 test if enabled and target exists
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     # Count IPv6 test if enabled and target exists
@@ -2949,7 +2991,7 @@ run_trace_test() {
                 local next_entry="${all_targets[$j]}"
                 [[ "$next_entry" == "#GROUP:"* ]] && break
                 if [ -n "$next_entry" ]; then
-                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port <<< "$next_entry"
+                    IFS='|' read -r _t_name _t_v4 _t_v6 _t_port _t_protocol <<< "$next_entry"
                     if [ -n "$_t_v4" ] && [ "$HAS_V4" = "true" ]; then total=$((total+1)); fi
                     if [ -n "$_t_v6" ] && [ "$HAS_V6" = "true" ]; then total=$((total+1)); fi
                 fi
@@ -2958,8 +3000,10 @@ run_trace_test() {
 
         # idx=$((idx+1))  <-- Remove here, increment inside test loop
         local target_port=""
-        IFS='|' read -r name ipv4 ipv6 target_port <<< "$entry"
+        local trace_protocol=""
+        IFS='|' read -r name ipv4 ipv6 target_port trace_protocol <<< "$entry"
         target_port=$(normalize_trace_port "$target_port")
+        trace_protocol="${trace_protocol:-tcp}"
 
         for mode in IPv4 IPv6; do
             local target=""
@@ -2969,7 +3013,9 @@ run_trace_test() {
             # 只有当 目标存在 且 (是IPv4且有V4网 OR 是IPv6且有V6网) 时才测试
             if [ -n "$target" ] && { ([ "$mode" = "IPv4" ] && [ "$HAS_V4" = "true" ]) || ([ "$mode" = "IPv6" ] && [ "$HAS_V6" = "true" ]); }; then
                 idx=$((idx+1))
-                echo "  │  ├─ [$idx/$total] $name ($mode, TCP/$target_port)..."
+                local probe_label="ICMP"
+                [ "$trace_protocol" = "tcp" ] && probe_label="TCP/$target_port"
+                echo "  │  ├─ [$idx/$total] $name ($mode, $probe_label)..."
                 local ipflag="-4"; [ "$mode" == "IPv6" ] && ipflag="-6"
 
                 # 运行 nexttrace
@@ -2977,7 +3023,11 @@ run_trace_test() {
                 local err_out=""
                 # Capture stdout and stderr
                 local err_file="$TMP_DIR/nt_err_$idx.log"
-                raw_output=$("$NEXTTRACE_BIN" --json --tcp --port "$target_port" --psize 1400 $ipflag "$target" 2>"$err_file")
+                if [ "$trace_protocol" = "icmp" ]; then
+                    raw_output=$("$NEXTTRACE_BIN" --json $ipflag "$target" 2>"$err_file")
+                else
+                    raw_output=$("$NEXTTRACE_BIN" --json --tcp --port "$target_port" --psize 1400 $ipflag "$target" 2>"$err_file")
+                fi
                 err_out=$(cat "$err_file" 2>/dev/null)
                 rm -f "$err_file"
 
@@ -3085,7 +3135,7 @@ run_trace_test() {
                         # === Streaming Report (Trace Item) ===
                         {
                             echo "#### $name ($mode)"
-                            echo "探测协议: \`TCP/$target_port\`"
+                            echo "探测协议: \`$probe_label\`"
                             echo ""
                             # 如果是动态 CDN 目标，显示解析到的域名
                             if [[ "$name" == *"Dynamic"* ]]; then
