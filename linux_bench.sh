@@ -282,7 +282,6 @@ cleanup() {
         log "清理本次安装的依赖..."
         echo "  ├─ 卸载: ${CLEANUP_PKGS[*]}"
         apt-get remove -y "${CLEANUP_PKGS[@]}" >/dev/null 2>&1 || true
-        apt-get autoremove -y >/dev/null 2>&1 || true
         echo -e "  └─ 清理完成 ${GREEN}✓${NC}"
     fi
 
@@ -450,6 +449,12 @@ check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Debian/Ubuntu 包安装状态必须由 dpkg 判断，不能把包名当作命令名检查。
+# 例如 xz-utils 提供的是 xz 命令；command -v xz-utils 会把已安装包误判为缺失。
+is_package_installed() {
+    [ "$(dpkg-query -W -f='${Status}' "$1" 2>/dev/null)" = "install ok installed" ]
+}
+
 # NextTrace Token:不再硬编码。若用户通过环境变量提供则使用之，
 # 否则 nexttrace 以无 token 模式运行（地理数据可能受限）。
 setup_nexttrace_token() {
@@ -550,10 +555,10 @@ ensure_dependencies() {
     local missing_pkgs=""
     local installed_pkgs=""
 
-    # 1. 检查缺失的包
+    # 1. 检查缺失的包。使用 dpkg 状态，确保只记录安装前确实不存在的包。
     # shellcheck disable=SC2086 # 故意词分割: 包列表
     for pkg in $target_pkgs; do
-        if check_cmd "$pkg"; then
+        if is_package_installed "$pkg"; then
             installed_pkgs="$installed_pkgs $pkg"
         else
             missing_pkgs="$missing_pkgs $pkg"
@@ -585,9 +590,13 @@ ensure_dependencies() {
         # shellcheck disable=SC2086 # 故意词分割: 包列表
         if apt-get install -y -q $missing_pkgs >/dev/null 2>&1; then
             echo -e " ${GREEN}完成${NC}"
-            # 记录安装的包以便清理
+            # 只记录安装前不存在、且现在已成功安装的包，以便精确清理。
             # shellcheck disable=SC2086 # 故意词分割: 包列表
-            for p in $missing_pkgs; do CLEANUP_PKGS+=("$p"); done
+            for p in $missing_pkgs; do
+                if is_package_installed "$p"; then
+                    CLEANUP_PKGS+=("$p")
+                fi
+            done
         else
             echo -e " ${RED}失败${NC}"
             fail "依赖安装失败，请检查网络或软件源配置。"
@@ -2923,7 +2932,7 @@ run_trace_test() {
                 local err_out=""
                 # Capture stdout and stderr
                 local err_file="$TMP_DIR/nt_err_$idx.log"
-                raw_output=$("$NEXTTRACE_BIN" --json $ipflag "$target" 2>"$err_file")
+                raw_output=$("$NEXTTRACE_BIN" --json --tcp --psize 1400 $ipflag "$target" 2>"$err_file")
                 err_out=$(cat "$err_file" 2>/dev/null)
                 rm -f "$err_file"
 
@@ -3149,7 +3158,7 @@ FALLBACK_EOF
         # 运行 nexttrace --from
         local raw_output=""
         local err_file="$TMP_DIR/nt_fwd_err_$idx.log"
-        raw_output=$("$NEXTTRACE_BIN" --json --from "$from_param" "$my_ipv4" 2>"$err_file")
+        raw_output=$("$NEXTTRACE_BIN" --json --tcp --psize 1400 --from "$from_param" "$my_ipv4" 2>"$err_file")
         local err_out=$(cat "$err_file" 2>/dev/null)
         rm -f "$err_file"
 
