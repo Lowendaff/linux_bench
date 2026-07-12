@@ -6,13 +6,13 @@
 
 #GROUP:中国电信
 中国电信 163|CN+AS4134
-中国电信 AS4847|CN+AS4847
 中国电信 (武汉)|CN+AS151185
 
 #GROUP:中国联通
 中国联通 (北京)|CN+AS4808
 中国联通 169|CN+AS4837
 中国联通 A网 (9929)|CN+AS9929
+中国联通 (上海)|CN+AS17621
 
 #GROUP:中国移动
 中国移动 CMNET|CN+AS9808
@@ -28,6 +28,7 @@
 
 #GROUP:中国其他
 Guangzhou (AS17622)|CN+AS17622
+深圳天威 (Topway)|CN+AS17962
 Ningbo (AS56041)|CN+AS56041
 Ningbo (AS136188)|CN+AS136188
 Beijing (AS153393)|CN+AS153393
