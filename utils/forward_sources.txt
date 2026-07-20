@@ -16,6 +16,7 @@
 
 #GROUP:中国移动
 中国移动 CMNET|CN+AS9808
+中国移动 (上海)|CN+AS24400
 中国移动 (河南)|CN+AS24445
 中国移动 (扬州)|CN+AS56046
 中国移动 (长沙)|CN+AS56047
@@ -31,8 +32,6 @@ Guangzhou (AS17622)|CN+AS17622
 深圳天威 (Topway)|CN+AS17962
 Shanghai (AS56040)|CN+AS56040
 Ningbo (AS56041)|CN+AS56041
-Ningbo (AS136188)|CN+AS136188
-Shiyan (AS146817)|CN+AS146817
 
 #GROUP:亚太地区
 香港 PCCW|HK+AS3491
