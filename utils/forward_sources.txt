@@ -9,15 +9,12 @@
 中国电信 AS4847|CN+AS4847
 
 #GROUP:中国联通
-中国联通 (北京)|CN+AS4808
 中国联通 169|CN+AS4837
 中国联通 A网 (9929)|CN+AS9929
 中国联通 (上海)|CN+AS17621
 
 #GROUP:中国移动
 中国移动 CMNET|CN+AS9808
-中国移动 (上海)|CN+AS24400
-中国移动 (河南)|CN+AS24445
 中国移动 (扬州)|CN+AS56046
 中国移动 (长沙)|CN+AS56047
 中国移动 (北京)|CN+AS56048
@@ -28,11 +25,10 @@
 华为云|CN+AS55990
 
 #GROUP:中国其他
-Guangzhou (AS17622)|CN+AS17622
+Shanghai (AS56040)|CN+AS56040
 Ningbo (AS56041)|CN+AS56041
 Ningbo (AS136188)|CN+AS136188
 Chongqing (AS141739)|CN+AS141739
-Shiyan (AS146817)|CN+AS146817
 
 #GROUP:亚太地区
 香港 PCCW|HK+AS3491
