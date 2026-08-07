@@ -10,6 +10,7 @@
 中国电信 (武汉)|CN+AS151185
 
 #GROUP:中国联通
+中国联通 (北京)|CN+AS4808
 中国联通 169|CN+AS4837
 中国联通 A网 (9929)|CN+AS9929
 
@@ -18,16 +19,17 @@
 中国移动 (上海)|CN+AS24400
 中国移动 (河南)|CN+AS24445
 中国移动 (扬州)|CN+AS56046
+中国移动 (北京)|CN+AS56048
 
 #GROUP:中国云厂商
 阿里云|CN+AS37963
 腾讯云|CN+AS45090
+华为云|CN+AS55990
 
 #GROUP:中国其他
-深圳天威 (Topway)|CN+AS17962
-Ningbo (AS56041)|CN+AS56041
+Shanghai (AS56040)|CN+AS56040
 Ningbo (AS136188)|CN+AS136188
-Shiyan (AS146817)|CN+AS146817
+Ningbo (AS207529)|CN+AS207529
 Shenzhen (AS208414)|CN+AS208414
 
 #GROUP:亚太地区
